@@ -15,3 +15,6 @@ class Worker:
         self.player = player
         self.worker_id = worker_id
         self.position = initial_position
+
+    def __bool__(self):
+        return bool(self.player or self.worker_id)
