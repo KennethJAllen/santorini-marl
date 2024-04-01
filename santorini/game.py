@@ -66,18 +66,18 @@ class Board:
         2) The current position has a worker and the target position does not have a worker
         3) The height of the target_position is at most 1 more than the height of current_position
         """
-        xc, yc = current_position
-        xt, yt = target_position
+        x_current, y_current = current_position
+        x_target, y_target = target_position
         grid_size = self.get_grid_size()
-        if not(0 <= xc < grid_size and 0 <= xt < grid_size):
+        if not(0 <= x_current < grid_size and 0 <= x_target < grid_size):
             # check horizontal locations are on board
             return False
 
-        if not(0 <= yc < grid_size and 0 <= yt < grid_size):
+        if not(0 <= y_current < grid_size and 0 <= y_target < grid_size):
             # check vertical locations are on board
             return False
 
-        if max(abs(xc - xt), abs(yc - yt)) != 1:
+        if max(abs(x_current - x_target), abs(y_current - y_target)) != 1:
             # check target_position is adjacent to current_position
             return False
 
@@ -107,7 +107,7 @@ class Board:
             raise ValueError("That is not a valid move.")
 
         worker = self.get_position_worker(current_position)
-        self.set_position_worker(current_position, Worker()) # Worker with no parameters represents no worker.
+        self.set_position_worker(current_position, Worker()) # Worker with default parameters represents no worker.
         self.set_position_worker(target_position, worker)
 
     def can_build(self, worker_position: tuple[int, int], build_position: tuple[int, int]) -> bool:
@@ -137,16 +137,16 @@ class Board:
     def display(self):
         """Prints the board state to the console."""
         grid_size = self.get_grid_size()
-        board = []
+        display_board = []
         for row_index in range(grid_size):
-            row = []
+            board_row = []
             for col_index in range(grid_size):
                 position = (row_index, col_index)
                 worker = self.get_position_worker(position)
                 height = self.get_position_height(position)
-                row.append((str(worker.player), str(height)))
-            board.append(row)
-        print(board)
+                board_row.append((str(worker.player), str(height)))
+            display_board.append(board_row)
+        print(display_board)
 
 board = Board()
 worker_a = Worker(player='A')
@@ -157,4 +157,4 @@ board.set_position_worker((2,2), worker_b)
 board.set_position_worker((3,3), worker_b)
 board.set_position_height((2,2), 2)
 board.set_position_height((4,4), 1)
-board.display()
+#board.display()
