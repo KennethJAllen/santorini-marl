@@ -26,7 +26,7 @@ class Board:
         # board state stored as a dict:
         # key: tuple of integers (x,y) representing location on the board
         # value: list of worker and building height.
-        self._state = defaultdict(lambda: [None, 0])
+        self._state = defaultdict(lambda: [Worker(), 0])
 
     def get_grid_size(self) -> int:
         """
@@ -37,7 +37,7 @@ class Board:
         return self._grid_size
 
     def get_position_worker(self, position: tuple[int, int]) -> Worker:
-        """Returns the worker in the given position. If there is no worker, returns None."""
+        """Returns the worker in the given position."""
         return self._state[position][0]
 
     def set_position_worker(self, position: tuple[int, int], worker: Worker) -> None:
@@ -77,7 +77,7 @@ class Board:
             # check vertical locations are on board
             return False
 
-        if max(abs(xc-xt), abs(yc-yt)) != 1:
+        if max(abs(xc - xt), abs(yc - yt)) != 1:
             # check target_position is adjacent to current_position
             return False
 
@@ -107,7 +107,7 @@ class Board:
             raise ValueError("That is not a valid move.")
 
         worker = self.get_position_worker(current_position)
-        self.set_position_worker(current_position, None)
+        self.set_position_worker(current_position, Worker()) # Worker with no parameters represents no worker.
         self.set_position_worker(target_position, worker)
 
     def can_build(self, worker_position: tuple[int, int], build_position: tuple[int, int]) -> bool:
@@ -134,9 +134,27 @@ class Board:
         :return: True if the position is on the third level, False otherwise.
         """
 
+    def display(self):
+        """Prints the board state to the console."""
+        grid_size = self.get_grid_size()
+        board = []
+        for row_index in range(grid_size):
+            row = []
+            for col_index in range(grid_size):
+                position = (row_index, col_index)
+                worker = self.get_position_worker(position)
+                height = self.get_position_height(position)
+                row.append((str(worker.player), str(height)))
+            board.append(row)
+        print(board)
 
-class Player:
-    """Player class to manage player actions and workers."""
-
-    def __init__(self, player):
-        self.player = player
+board = Board()
+worker_a = Worker(player='A')
+worker_b = Worker(player='B')
+board.set_position_worker((1,1), worker_a)
+board.set_position_worker((1,2), worker_a)
+board.set_position_worker((2,2), worker_b)
+board.set_position_worker((3,3), worker_b)
+board.set_position_height((2,2), 2)
+board.set_position_height((4,4), 1)
+board.display()
