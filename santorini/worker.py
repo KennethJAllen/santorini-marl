@@ -19,3 +19,10 @@ class Worker:
 
     def __bool__(self):
         return bool(self.player or self.worker_id)
+
+    def __eq__(self, other):
+        if not isinstance(other, Worker):
+            # don't attempt to compare against unrelated types
+            return NotImplemented
+
+        return self.player == other.player and self.worker_id == other.worker_id and self._gender == other._gender
