@@ -1,6 +1,7 @@
 """Test configuration file containing pytest fixtures."""
 
 import math
+from collections import defaultdict 
 import pytest
 from santorini.player import Player
 from santorini.worker import Worker
@@ -44,25 +45,21 @@ def worker_b2(player_b):
 
 @pytest.fixture
 def board_empty():
-    '''A sample board.'''
+    """An empty board."""
     return Board()
 
 @pytest.fixture
-def board_1(worker_a1, worker_a2, worker_b1, worker_b2, worker_empty):
+def populated_board(worker_a1, worker_a2, worker_b1, worker_b2, worker_empty):
     '''A sample board.'''
-    state_data = {(0,0): [worker_a1, 0],
-                  (1,1): [worker_a2, 1],
-                   (0,1): [worker_b1, 2],
-                   (4,4): [worker_b2, 1],
-                   (1,2): [worker_empty, 3],
-                   (3,3): [worker_empty, 1],
-                   (4,3): [worker_empty, 3],
-                   (1,0): [worker_empty, math.inf]}
+    state_data = defaultdict(lambda: [Worker(), 0],
+                             {(0,0): [worker_a1, 0],
+                              (1,1): [worker_a2, 1],
+                              (0,1): [worker_b1, 2],
+                              (4,4): [worker_b2, 1],
+                              (1,2): [worker_empty, 3],
+                              (3,3): [worker_empty, 1],
+                              (4,3): [worker_empty, 3],
+                              (1,0): [worker_empty, math.inf]})
     board = Board()
     board.set_state(state_data)
     return board
-
-@pytest.fixture
-def board_2():
-    """An empty board."""
-    return Board()
