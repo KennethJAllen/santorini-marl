@@ -53,6 +53,10 @@ class Board:
         """Sets the given height on the given position."""
         self._state[position][1] = height
 
+    def set_state(self, state_data: dict[tuple[int, int], list[Worker, int]]) -> None:
+        """Sets the board state corresponding to the given state data."""
+        self._state = state_data
+
     def can_move(self, current_position: tuple[int, int], target_position: tuple[int,int]) -> bool:
         """
         Checks if a move from current_position to target_position is valid.
@@ -147,14 +151,3 @@ class Board:
                 board_row.append((str(worker.player), str(height)))
             display_board.append(board_row)
         print(display_board)
-
-board = Board()
-worker_a = Worker(player='A')
-worker_b = Worker(player='B')
-board.set_position_worker((1,1), worker_a)
-board.set_position_worker((1,2), worker_a)
-board.set_position_worker((2,2), worker_b)
-board.set_position_worker((3,3), worker_b)
-board.set_position_height((2,2), 2)
-board.set_position_height((4,4), 1)
-#board.display()
