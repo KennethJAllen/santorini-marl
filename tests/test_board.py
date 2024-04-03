@@ -1,28 +1,13 @@
 """Tests for the Board class."""
 
-import pytest
-from santorini.worker import Worker
-from santorini.game import Board
+def test_grid_size(board_1):
+    assert board_1.get_grid_size() == 5
 
-@pytest.fixture
-def worker_a1():
-    """A sample worker for player a."""
-    return Worker(player = 'a', worker_id = '1')
+def test_get_position_worker(board_1, worker_a2):
+    position = (1, 1)
+    assert board_1.get_position_worker(position) == worker_a2
 
-@pytest.fixture
-def worker_a2():
-    """A second sample worker for player a."""
-    return Worker(player = 'a', worker_id = '2')
-
-@pytest.fixture
-def worker_b1():
-    """A sample worker for player b."""
-    return Worker(player = 'b', worker_id = '3')
-
-@pytest.fixture
-def board():
-    '''A sample board.'''
-    return Board()
-
-def test(sample_board):
-    assert sample_board.num_players == 2
+def test_set_position_worker(board_2, worker_a1):
+    position = (2,4)
+    board_2.set_position_worker(position, worker_a1)
+    assert board_2.get_position_worker(position) == worker_a1
