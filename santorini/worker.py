@@ -3,7 +3,7 @@ from santorini.player import Player
 class Worker:
     """Worker class to represent a player's worker on the board."""
 
-    def __init__(self, player: Player = None, worker_id: str = "", initial_position: tuple[int, int] = (0, 0)):
+    def __init__(self, player: Player = None, worker_id: str = "", gender = "", initial_position: tuple[int, int] = (0, 0)):
         """
         Initializes a new worker with a player, an identifier, and an initial position on the board.
         Default values represent no worker.
@@ -14,6 +14,7 @@ class Worker:
         """
         self.player = player
         self.worker_id = worker_id
+        self._gender = gender
         self.position = initial_position
 
     def __bool__(self):
