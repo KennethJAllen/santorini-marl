@@ -49,15 +49,20 @@ def board_empty():
     return Board()
 
 @pytest.fixture
-def populated_board(worker_a1, worker_a2, worker_b1, worker_b2, worker_empty):
-    '''A sample board.'''
+def board_populated(worker_a1, worker_a2, worker_b1, worker_b2, worker_empty):
+    """
+    A sample board.
+    state data key: tuple of integers (x,y) representing location on the board
+    state data value: list of worker and building height.
+    """
     state_data = defaultdict(lambda: [Worker(), 0],
                              {(0,0): [worker_a1, 0],
-                              (1,1): [worker_a2, 1],
+                              (1,1): [worker_a2, 0],
                               (0,1): [worker_b1, 2],
                               (4,4): [worker_b2, 1],
-                              (1,2): [worker_empty, 3],
+                              (2,0): [worker_empty, 1],
                               (3,3): [worker_empty, 1],
+                              (1,2): [worker_empty, 3],
                               (4,3): [worker_empty, 3],
                               (1,0): [worker_empty, math.inf]})
     board = Board()

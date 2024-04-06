@@ -54,7 +54,10 @@ class Board:
         self._state[position][1] = height
 
     def set_state(self, state_data: dict[tuple[int, int], list[Worker, int]]) -> None:
-        """Sets the board state corresponding to the given state data."""
+        """
+        Sets the board state corresponding to the given state data.
+        This is primarily used for testing.
+        """
         self._state = state_data
 
     def can_move(self, current_position: tuple[int, int], target_position: tuple[int,int]) -> bool:
