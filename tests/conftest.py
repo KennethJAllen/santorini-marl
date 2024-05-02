@@ -5,7 +5,7 @@ from collections import defaultdict
 import pytest
 from santorini.player import Player
 from santorini.worker import Worker
-from santorini.game import Board
+from santorini.board import Board
 
 
 @pytest.fixture
