@@ -1,5 +1,6 @@
 from collections import defaultdict
 from santorini.worker import Worker
+from santorini import utils
 
 class Board:
     """Board class to handle the game board and buildings."""
@@ -53,6 +54,14 @@ class Board:
         """
         self._state = state_data
 
+    def is_on_board(self, position: tuple[int, int]) -> bool:
+        """Returns true if position is on the board. Returns false otherwise."""
+        grid_size = self.get_grid_size()
+        x_position, y_position = position
+        if 0 <= x_position < grid_size and 0 <= y_position < grid_size:
+            return True
+        return False
+
     def can_move(self, current_position: tuple[int, int], target_position: tuple[int,int]) -> bool:
         """
         Checks if a move from current_position to target_position is valid.
@@ -66,19 +75,11 @@ class Board:
         2) The current position has a worker and the target position does not have a worker
         3) The height of the target_position is at most 1 more than the height of current_position
         """
-        x_current, y_current = current_position
-        x_target, y_target = target_position
-        grid_size = self.get_grid_size()
-        if not(0 <= x_current < grid_size and 0 <= x_target < grid_size):
-            # check horizontal locations are on board
+        if not self.is_on_board(current_position) or not self.is_on_board(target_position):
+            # ensure that positions are on board
             return False
 
-        if not(0 <= y_current < grid_size and 0 <= y_target < grid_size):
-            # check vertical locations are on board
-            return False
-
-        if max(abs(x_current - x_target), abs(y_current - y_target)) != 1:
-            # check target_position is adjacent to current_position
+        if not utils.is_adjacent(current_position, target_position):
             return False
 
         current_worker = self.get_position_worker(current_position)
@@ -122,13 +123,26 @@ class Board:
         :param build_position: A tuple (x, y) indicating the position to build on.
         :return: True if the build is valid, False otherwise.
         """
+        if not self.is_on_board(worker_position) or not self.is_on_board(build_position):
+            # ensure that positions are on board
+            return False
 
-    def build(self, build_position: tuple[int, int]) -> None:
+        if not utils.is_adjacent(worker_position, build_position):
+            # check build position is adjacent to worker position
+            return False
+        return True
+
+    def build(self, worker_position: tuple[int, int], build_position: tuple[int, int]) -> None:
         """
         Increments the building level on build_position if the build is valid.
 
         :param build_position: A tuple (x, y) indicating the position to build on.
         """
+        if not self.can_build(worker_position, build_position):
+            raise ValueError("That is not a valid move.")
+
+        position_height = self.get_position_height(build_position)
+        self.set_position_height(build_position, position_height+1)
 
     def check_win_condition(self, target_position):
         """
