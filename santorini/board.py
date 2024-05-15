@@ -5,17 +5,15 @@ from santorini import utils
 class Board:
     """Board class to handle the game board and buildings."""
 
-    def __init__(self, grid_size: int = 5, max_building_height: int = 3, num_players: int = 2):
+    def __init__(self, grid_size: int = 5, max_building_height: int = 3):
         """
         Initializes the game board.
 
         :param grid_size = 5: The length and width of the square board
         :param max_building_height = 3: The maximum height of a non-capped building
-        :param num_players = 2: The number of players in the game.
         """
         self._grid_size = int(grid_size)
         self._max_building_height = int(max_building_height)
-        self._num_players = int(num_players)
 
         # board state stored as a dict:
         # key: tuple of integers (x,y) representing location on the board
