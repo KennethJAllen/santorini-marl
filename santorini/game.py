@@ -1,7 +1,7 @@
 """Game logic and main loop."""
-from santorini.player import Player
 from santorini.worker import Worker
 from santorini.board import Board
+import santorini.utils as utils
 
 class Game:
     """Game logic and main loop."""
@@ -23,11 +23,19 @@ class Game:
         for player in self.players:
             for worker_num in range(1, self.num_workers + 1):
                 worker = Worker(player = player, worker_id = worker_num)
+                while True:
+                    print(f"Player {player.player_id} select the position for worker {worker_num}.")
+                    try:
+                        algebraic_worker_position = input().upper()
+                        worker_position = utils.algebraic_position_to_indices(algebraic_worker_position)
 
-                print(f"Player {player.player_id} select the position for worker {worker_num}.")
-                worker_position = input().upper()
-                # todo: check if position is valid
-                self.board.set_position_worker(worker_position, worker)
+                        if self.board.get_position_worker(worker_position):
+                            raise ValueError("There is already a worker occupying that space. Choose a different space.")
+                        self.board.set_position_worker(worker_position, worker)
+                        break
+                    except ValueError as e:
+                        print(e)
+                        continue
 
     def game_loop(self):
         """Main game loop"""
