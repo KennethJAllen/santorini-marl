@@ -1,5 +1,5 @@
 """Test configuration file containing pytest fixtures."""
-# pylint: disable=locally-disabled, multiple-statements, fixme, line-too-long, redefined-outer-name
+# pylint: disable=locally-disabled, multiple-statements, fixme, line-too-long, redefined-outer-name, missing-function-docstring
 
 import math
 from collections import defaultdict
