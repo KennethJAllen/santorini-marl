@@ -1,7 +1,8 @@
 """Test configuration file containing pytest fixtures."""
+# pylint: disable=locally-disabled, multiple-statements, fixme, line-too-long, redefined-outer-name
 
 import math
-from collections import defaultdict 
+from collections import defaultdict
 import pytest
 from santorini.player import Player
 from santorini.worker import Worker
@@ -47,6 +48,7 @@ def worker_b2(player_b):
 def board_empty():
     """An empty board."""
     return Board()
+
 
 @pytest.fixture
 def board_populated(worker_a1, worker_a2, worker_b1, worker_b2, worker_empty):

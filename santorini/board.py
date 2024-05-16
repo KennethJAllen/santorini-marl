@@ -1,4 +1,6 @@
 from collections import defaultdict
+import math
+
 from santorini.worker import Worker
 from santorini import utils
 
@@ -108,7 +110,8 @@ class Board:
 
         worker = self.get_position_worker(current_position)
 
-        self.set_position_worker(current_position, Worker()) # Worker with default parameters represents no worker.
+        # Worker with default parameters represents no worker.
+        self.set_position_worker(current_position, Worker())
         self.set_position_worker(target_position, worker)
 
         return self.check_win_condition(target_position)
@@ -121,13 +124,23 @@ class Board:
         :param build_position: A tuple (x, y) indicating the position to build on.
         :return: True if the build is valid, False otherwise.
         """
+        # Check positions are on the board
         if not self.is_on_board(worker_position) or not self.is_on_board(build_position):
-            # ensure that positions are on board
             return False
 
+        # Check build position is adjacent to worker position
         if not utils.is_adjacent(worker_position, build_position):
-            # check build position is adjacent to worker position
             return False
+
+        # Check if building height has reached a dome or max height
+        position_height = self.get_position_height(build_position)
+        if position_height == math.inf or position_height >= self._max_building_height:
+            return False
+
+        # Check worker is on position
+        if not self.get_position_worker(worker_position):
+            return False
+
         return True
 
     def build(self, worker_position: tuple[int, int], build_position: tuple[int, int]) -> None:
@@ -137,7 +150,7 @@ class Board:
         :param build_position: A tuple (x, y) indicating the position to build on.
         """
         if not self.can_build(worker_position, build_position):
-            raise ValueError("That is not a valid move.")
+            raise ValueError("That is not a valid build position.")
 
         position_height = self.get_position_height(build_position)
         self.set_position_height(build_position, position_height+1)
@@ -163,4 +176,4 @@ class Board:
                 height = self.get_position_height(position)
                 board_row.append((str(worker.player), str(height)))
             display_board.append(board_row)
-        print(display_board)
+        print(display_board, end='\n')
