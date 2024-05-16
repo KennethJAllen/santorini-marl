@@ -167,13 +167,11 @@ class Board:
     def display(self):
         """Prints the board state to the console."""
         grid_size = self.get_grid_size()
-        display_board = []
         for row_index in range(grid_size):
             board_row = []
             for col_index in range(grid_size):
                 position = (row_index, col_index)
                 worker = self.get_position_worker(position)
                 height = self.get_position_height(position)
-                board_row.append((str(worker.player), str(height)))
-            display_board.append(board_row)
-        print(display_board, end='\n')
+                board_row.append((worker.display(), str(height)))
+            print(board_row)

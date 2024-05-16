@@ -23,4 +23,11 @@ class Worker:
             # don't attempt to compare against unrelated types
             return NotImplemented
 
-        return self.player == other.player and self.worker_id == other.worker_id and self._gender == other._gender
+        return self.player is other.player and self.worker_id == other.worker_id and self._gender == other._gender
+
+    def display(self):
+        """Displayers the worker info."""
+        if self:
+            return f"{self.player.player_id}_{self.worker_id}"
+        else:
+            return ""
