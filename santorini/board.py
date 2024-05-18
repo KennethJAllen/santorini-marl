@@ -1,7 +1,7 @@
 from collections import defaultdict
 import math
 
-from santorini.worker import Worker
+from santorini.player import Worker
 from santorini import utils
 
 class Board:
@@ -37,6 +37,7 @@ class Board:
     def set_position_worker(self, position: tuple[int, int], worker: Worker) -> None:
         """Sets the given worker on the given position."""
         self._state[position][0] = worker
+        
 
     def get_position_height(self, position: tuple[int, int]) -> int:
         """Returns the building height at the given position.
@@ -153,7 +154,7 @@ class Board:
             raise ValueError("That is not a valid build position.")
 
         position_height = self.get_position_height(build_position)
-        self.set_position_height(build_position, position_height+1)
+        self.set_position_height(build_position, position_height + 1)
 
     def check_win_condition(self, target_position):
         """

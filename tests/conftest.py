@@ -4,8 +4,7 @@
 import math
 from collections import defaultdict
 import pytest
-from santorini.player import Player
-from santorini.worker import Worker
+from santorini.player import Player, Worker
 from santorini.board import Board
 
 
