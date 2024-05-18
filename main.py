@@ -5,9 +5,11 @@ from santorini.player import Player
 def main():
     """Entry point to start the game."""
     board = Board()
-
-    # Initialize players, default 2 players
-    players = [Player(1), Player(2)]
+    num_players = 2 # default 2 players
+    # Initialize players
+    players = []
+    for player_id in range(1,num_players+1):
+        players.append(Player(player_id))
 
     # Initialize the game with the board and players
     game = Game(players, board)
