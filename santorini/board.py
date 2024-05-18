@@ -63,34 +63,34 @@ class Board:
             return True
         return False
 
-    def can_move(self, current_position: tuple[int, int], target_position: tuple[int,int]) -> bool:
+    def can_move(self, worker_position: tuple[int, int], target_position: tuple[int,int]) -> bool:
         """
-        Checks if a move from current_position to target_position is valid.
+        Checks if a move from worker_position to target_position is valid.
 
-        :param current_position: A tuple (xc, yc) indicating the worker's current position.
+        :param worker_position: A tuple (xc, yc) indicating the worker's current position.
         :param target_position: A tuple (xt, yt) indicating the desired position to move to.
         :return: True if the move is valid, False otherwise.
 
         A move is valid if it is:
         1) To an adjacent square on the board
         2) The current position has a worker and the target position does not have a worker
-        3) The height of the target_position is at most 1 more than the height of current_position
+        3) The height of the target_position is at most 1 more than the height of worker_position
         """
-        if not self.is_on_board(current_position) or not self.is_on_board(target_position):
+        if not self.is_on_board(worker_position) or not self.is_on_board(target_position):
             # ensure that positions are on board
             return False
 
-        if not utils.is_adjacent(current_position, target_position):
+        if not utils.is_adjacent(worker_position, target_position):
             return False
 
-        current_worker = self.get_position_worker(current_position)
+        current_worker = self.get_position_worker(worker_position)
         target_worker = self.get_position_worker(target_position)
         if not current_worker or target_worker:
             # check there is not a worker on the target_position,
-            # and there is a worker on the current_position
+            # and there is a worker on the worker_position
             return False
 
-        current_height = self.get_position_height(current_position)
+        current_height = self.get_position_height(worker_position)
         target_height = self.get_position_height(target_position)
         if target_height > current_height + 1:
             # check target_height is at most 1 more than current_height
@@ -119,7 +119,7 @@ class Board:
 
     def can_build(self, worker_position: tuple[int, int], build_position: tuple[int, int]) -> bool:
         """
-        Checks if building on build_position is valid, given the worker's current position.
+        Checks if building on build position is valid, given the worker's current position.
 
         :param worker_position: A tuple (x, y) indicating the worker's current position.
         :param build_position: A tuple (x, y) indicating the position to build on.
@@ -138,8 +138,8 @@ class Board:
         if position_height == math.inf or position_height >= self._max_building_height:
             return False
 
-        # Check worker is on position
-        if not self.get_position_worker(worker_position):
+        # Check if worker is on position
+        if self.get_position_worker(build_position):
             return False
 
         return True
@@ -155,6 +155,16 @@ class Board:
 
         position_height = self.get_position_height(build_position)
         self.set_position_height(build_position, position_height + 1)
+
+    def can_place(self, position):
+        """Check if placing worker on position is valid."""
+        # Check positions are on the board
+        if not self.is_on_board(position):
+            return False
+        # Check worker is on position
+        if self.get_position_worker(position):
+            return False
+        return True
 
     def check_win_condition(self, target_position):
         """

@@ -6,7 +6,7 @@ import santorini.utils as utils
 class Game:
     """Game logic and main loop."""
 
-    def __init__(self, players: int, board: Board):
+    def __init__(self, players: list[Player], board: Board):
         self.players = players # List of Player objects participating in the game
         self.board = board  # The game board, an instance of the Board class
         self.num_workers = 2 # number of workers each player has
@@ -23,12 +23,13 @@ class Game:
         for player in self.players:
             for worker_num in range(1, self.num_workers + 1):
                 worker = Worker(player = player, worker_id = worker_num)
+                self.board.display()
                 while True:
                     print(f"Player {player.player_id} select the position for worker {worker_num}.")
                     try:
                         algebraic_worker_position = input().upper()
                         worker_position = utils.algebraic_position_to_indices(algebraic_worker_position)
-                        self.validate_position(worker_position)
+                        self.validate_worker_placement(worker_position)
                         self.board.set_position_worker(worker_position, worker)
                         break
                     except ValueError as error:
@@ -44,33 +45,48 @@ class Game:
             self.current_player_index = (self.current_player_index + 1) % num_players
         print(f"Player {current_player.player_id} wins!")
 
-    def turn(self, player):
+    def turn(self, player: Player):
         """Handle a single player's turn. This involves moving a worker and then performing a build action."""
         worker_position, target_position = self.get_move_action(player)
         self.execute_move(worker_position, target_position)
         build_position = self.get_build_action(target_position, player)
-        self.execute_build(build_position, target_position)
+        self.execute_build(target_position, build_position)
 
-    def get_move_action(self, player) -> tuple[tuple[int, int], tuple[int, int]]:
+    def get_move_action(self, player: Player) -> tuple[tuple[int, int], tuple[int, int]]:
         """Get the player's choice of move action.
         Returns position to move worker from and location to move worker to."""
         self.board.display()
+        worker_position = self.get_position_move_from(player)
+        target_position = self.get_position_move_to(player, worker_position)
+        return worker_position, target_position
+
+    def get_position_move_from(self, player: Player) -> tuple[int,int]:
+        """Get the position to move a worker from."""
         while True:
             try:
-                print(f"Player {player.player_id}, select the position you want your worker to move from (e.g. A1 to move worker on space A1)")
+                print(f"Player {player.player_id}, select the position you want to move from (e.g. A1 to move worker on space A1)")
                 algebraic_worker_position = input().upper()  # Assuming the input is something like 'A1'
                 worker_position = utils.algebraic_position_to_indices(algebraic_worker_position)
-                self.validate_position_on_board(worker_position)
                 self.validate_correct_player(worker_position, player)
-                print(f"Player {player.player_id}, select the position you want your worker to move to (e.g. B2 to move your worker to space B2)")
-                algebraic_target_position = input().upper()  # Assuming the input is something like 'A1'
-                target_position = utils.algebraic_position_to_indices(algebraic_target_position)
-                self.validate_position(target_position, adjacent_position=worker_position)
                 break
             except ValueError as error:
                 print(error)
                 continue
-        return worker_position, target_position
+        return worker_position
+
+    def get_position_move_to(self, player: Player, worker_position: tuple[int, int]) -> tuple[int,int]:
+        """Get the position to move a worker to."""
+        while True:
+            try:
+                print(f"Player {player.player_id}, select the position you want to move to (e.g. B2 to move your worker to space B2)")
+                algebraic_target_position = input().upper()  # Assuming the input is something like 'A1'
+                target_position = utils.algebraic_position_to_indices(algebraic_target_position)
+                self.validate_move(worker_position, target_position)
+                break
+            except ValueError as error:
+                print(error)
+                continue
+        return target_position
 
     def execute_move(self, worker_position, target_position):
         """
@@ -89,35 +105,15 @@ class Game:
                 print(f"Player {player.player_id}, select the position you want to build on (e.g. A1 to build on space A1)")
                 algebraic_build_position = input().upper()  # Assuming the input is something like 'A1'
                 build_position = utils.algebraic_position_to_indices(algebraic_build_position)
-                self.validate_position(build_position, adjacent_position=worker_position)
+                self.validate_build_position(worker_position, build_position)
                 break
             except ValueError as error:
                 print(error)
         return build_position
 
-    def execute_build(self, build_location, worker_position):
+    def execute_build(self, worker_position, build_position):
         """Execute the build action on the board."""
-        self.board.build(build_location, worker_position)
-
-    def validate_position_on_board(self, position):
-        """Verifies that position is on the board."""
-        if not self.board.is_on_board(position):
-            grid_size = self.board.get_grid_size()
-            raise ValueError(f"Choose a position on the {grid_size} by {grid_size} board.")
-
-    def validate_position(self, position: tuple[int, int], adjacent_position: tuple[int, int] = None):
-        """Verifies that the position is on the board and does not contain a worker.
-        optional adjacent_position: Verifies that the position is adjacent to the adjacent position."""
-        self.validate_position_on_board(position)
-        if adjacent_position and not utils.is_adjacent(position, adjacent_position):
-            raise ValueError("The target position must be adjacent to the worker's position.")
-        if self.board.get_position_worker(position):
-            raise ValueError("There is a worker occupying that space. Choose a different space.")
-
-    def validate_correct_player(self, position: tuple[int, int], player: Player):
-        """Verifies that the worker in the specified position belongs to player."""
-        if not self.board.get_position_worker(position).get_player() == player:
-            raise ValueError(f"The worker in this position does not belong to player {player.player_id}.")
+        self.board.build(worker_position, build_position)
 
     def check_win_condition(self):
         """Check if a player has won the game"""
@@ -126,3 +122,28 @@ class Game:
     def end_game(self):
         """Perform any cleanup and declare the game winner."""
         self._game_over = True
+
+    def validate_worker_placement(self, position):
+        """Verifies that a worker can be placed on position."""
+        if not self.board.can_place(position):
+            raise ValueError("Cannot place a worker on that position.")
+
+    def validate_move(self, worker_position, target_position):
+        """Verifies that a worker in worker position can move to target position."""
+        if not self.board.can_move(worker_position, target_position):
+            raise ValueError("Cannot move to that position.")
+
+    def validate_correct_player(self, position: tuple[int, int], player: Player):
+        """Verifies that the worker in the specified position belongs to player."""
+        # validate position on board
+        if not self.board.is_on_board(position):
+            grid_size = self.board.get_grid_size()
+            raise ValueError(f"Choose a position on the {grid_size} by {grid_size} board.")
+        # validate player
+        if not self.board.get_position_worker(position).get_player() == player:
+            raise ValueError(f"The worker in this position does not belong to player {player.player_id}.")
+
+    def validate_build_position(self, worker_position: tuple[int, int], build_position: tuple[int, int]):
+        """Verifies that a position can be built on."""
+        if not self.board.can_build(worker_position, build_position):
+            raise ValueError("That is not a valid build position. Please choose a valid build position.")

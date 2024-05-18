@@ -157,10 +157,10 @@ def test_move_worker_bad(board_populated, current_position, target_position):
 # test build
 
 def test_build_success(board_populated):
-    worker_position = (0, 0)
-    build_position = (0, 1)
+    worker_position = (2, 0) 
+    build_position = (2, 1)
     
-    # Expected increase in building height at position (0,1) from 2 to 3
+    # Expected increase in building height
     initial_height = board_populated.get_position_height(build_position)
     board_populated.build(worker_position, build_position)
     new_height = board_populated.get_position_height(build_position)
@@ -194,11 +194,10 @@ def test_build_max_height_reached(board_populated):
         board_populated.build(worker_position, build_position)
     assert "That is not a valid build position." in str(excinfo.value)
 
-def test_build_no_worker_at_position(board_populated):
-    worker_position = (2, 0)  # Position where worker is 'empty'
-    build_position = (2, 1)
+def test_build_worker_at_position(board_populated):
+    worker_position = (0, 0)
+    build_position = (0, 1)
 
-    # Position (2,0) does not have an active worker; it's set to worker_empty
     with pytest.raises(ValueError) as excinfo:
         board_populated.build(worker_position, build_position)
     assert "That is not a valid build position." in str(excinfo.value)
