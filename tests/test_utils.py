@@ -2,7 +2,7 @@
 # pylint: disable=locally-disabled, multiple-statements, fixme, line-too-long, redefined-outer-name, missing-function-docstring
 
 import pytest
-import santorini.utils as utils
+from santorini import utils
 
 
 def test_is_adjacent():
@@ -16,7 +16,7 @@ def test_valid_algebraic_positions():
     assert utils.algebraic_position_to_indices("A1") == (0, 0)
     assert utils.algebraic_position_to_indices("B2") == (1, 1)
     assert utils.algebraic_position_to_indices("H8") == (7, 7)
-    assert utils.algebraic_position_to_indices("A10") == (0, 9)
+    assert utils.algebraic_position_to_indices("A10") == (9, 0)
 
 def test_invalid_algebraic_positions():
     with pytest.raises(ValueError):

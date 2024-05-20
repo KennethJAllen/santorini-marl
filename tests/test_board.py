@@ -154,10 +154,45 @@ def test_move_worker_bad(board_populated, current_position, target_position):
 
 # test can_build
 
+def test_can_build_valid_move(board_populated):
+    worker_position = (0, 1)
+    build_position = (0, 2)  # Adjacent and no worker present, height not max
+    assert board_populated.can_build(worker_position, build_position) is True
+
+def test_can_build_non_adjacent_position(board_populated):
+    worker_position = (0, 0)
+    build_position = (2, 0)  # Not adjacent
+    assert board_populated.can_build(worker_position, build_position) is False
+
+def test_can_build_position_with_worker(board_populated):
+    worker_position = (0, 0)
+    build_position = (1, 1)  # Worker present
+    assert board_populated.can_build(worker_position, build_position) is False
+
+def test_can_build_max_height_reached(board_populated):
+    worker_position = (0, 0)
+    build_position = (1, 0)  # Max height (math.inf)
+    assert board_populated.can_build(worker_position, build_position) is False
+
+def test_can_build_off_board_position(board_populated):
+    worker_position = (4, 4)
+    build_position = (5, 5)  # Off board
+    assert board_populated.can_build(worker_position, build_position) is False
+
+def test_can_build_invalid_worker_position(board_populated):
+    worker_position = (5, 5)  # Off board
+    build_position = (0, 1)
+    assert board_populated.can_build(worker_position, build_position) is False
+
+def test_can_build_valid_position_edge_of_board(board_populated):
+    worker_position = (4, 4)
+    build_position = (4, 3)  # On the edge of the board
+    assert board_populated.can_build(worker_position, build_position) is True
+
 # test build
 
 def test_build_success(board_populated):
-    worker_position = (2, 0) 
+    worker_position = (2, 0)
     build_position = (2, 1)
     
     # Expected increase in building height

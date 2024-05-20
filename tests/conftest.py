@@ -4,19 +4,20 @@
 import math
 from collections import defaultdict
 import pytest
+
 from santorini.player import Player, Worker
 from santorini.board import Board
 
 
 @pytest.fixture
-def player_a():
-    """A sample worker for player a."""
-    return Player(player_id = 'a')
+def player_1():
+    """A sample worker for player 1."""
+    return Player(player_id = 1)
 
 @pytest.fixture
-def player_b():
-    """A sample worker for player b."""
-    return Player(player_id = 'b')
+def player_2():
+    """A sample worker for player 2."""
+    return Player(player_id = 2)
 
 @pytest.fixture
 def worker_empty():
@@ -24,24 +25,24 @@ def worker_empty():
     return Worker()
 
 @pytest.fixture
-def worker_a1(player_a):
+def worker_a1(player_1):
     """A sample worker for player a."""
-    return Worker(player = player_a, worker_id = '1')
+    return Worker(player = player_1, worker_id = 1)
 
 @pytest.fixture
-def worker_a2(player_a):
+def worker_a2(player_1):
     """A second sample worker for player a."""
-    return Worker(player = player_a, worker_id = '2')
+    return Worker(player = player_1, worker_id = 2)
 
 @pytest.fixture
-def worker_b1(player_b):
+def worker_b1(player_2):
     """A sample worker for player b."""
-    return Worker(player = player_b, worker_id = '3')
+    return Worker(player = player_2, worker_id = 1)
 
 @pytest.fixture
-def worker_b2(player_b):
+def worker_b2(player_2):
     """A sample worker for player b."""
-    return Worker(player = player_b, worker_id = '4')
+    return Worker(player = player_2, worker_id = 2)
 
 @pytest.fixture
 def board_empty():
