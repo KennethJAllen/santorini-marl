@@ -34,7 +34,7 @@ You can now run the project's scripts within the poetry shell.
 
 ### Using `main.py`
 
-To play the game, execute the script `main.py`. Each user will be prompted to place their pieces.
+To play the game, execute the script `main.py`.
 
 On each turn, a player will be prompted to choose a square to move from, choose a square to move to, and place a piece.
 
