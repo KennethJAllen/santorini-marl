@@ -3,6 +3,7 @@ from santorini.board import Board
 from santorini.player import Player, Worker
 import santorini.utils as utils
 
+# todo: Add function that finds valid moves for player
 # todo: make it so if a player has no moves they lose
 
 class Game:
