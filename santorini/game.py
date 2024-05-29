@@ -1,7 +1,7 @@
 """Game class containing game logic."""
 from santorini.board import Board
 from santorini.player import Player, Worker
-import santorini.utils as utils
+from santorini import utils
 
 # todo: Add function that finds valid moves for player
 # todo: make it so if a player has no moves they lose
