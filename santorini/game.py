@@ -1,4 +1,6 @@
 """Game class containing game logic."""
+import asyncio
+
 from santorini.board import Board
 from santorini.player import Player, Worker
 from santorini import utils
@@ -14,11 +16,6 @@ class Game:
         self.board = board  # The game board, an instance of the Board class
         self.num_workers = 2 # number of workers each player has
         self.current_player_index = 0  # Index to keep track of whose turn it is
-
-    def start(self):
-        """Initialize game components and start the game loop"""
-        self.setup_board()
-        self.game_loop()
 
     def setup_board(self):
         """Prepare the game board for play (e.g., initialize players, place workers)"""

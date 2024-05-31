@@ -1,9 +1,28 @@
+import asyncio
+
+import pygame
+
 from santorini.game import Game
 from santorini.board import Board
 from santorini.player import Player
 
-def main():
+async def main():
     """Entry point to start the game."""
+    # Initialize Pygame
+    pygame.init()
+
+    # Constants for the game window
+    SCREEN_WIDTH = 800
+    SCREEN_HEIGHT = 600
+    FPS = 30  # Frames per second
+
+    # Set up the display
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption("Santorini")
+
+    # Set up the clock
+    clock = pygame.time.Clock()
+    
     board = Board()
     num_players = 2 # default 2 players
     # Initialize players
@@ -15,7 +34,11 @@ def main():
     game = Game(players, board)
 
     # Start the game
-    game.start()
+    running = True
+    while running:
+        game.setup_board()
+        game.game_loop()
+        await asyncio.sleep(0)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
