@@ -1,8 +1,8 @@
 """Defines the Worker and Player classes."""
 from __future__ import annotations
-import pygame
 
-from .config import SQUARE_SIZE, PADDING, BORDER
+from santorini import utils
+from santorini.config import SQUARE_SIZE
 
 class Worker:
     """Worker class to represent a player's worker on the board."""
@@ -67,29 +67,32 @@ class Worker:
     def get_display_position(self) -> tuple[int,int]:
         """Returns the center of the square corresponding to the worker on the display board."""
         x, y = self._position
-        x_display = SQUARE_SIZE * x + SQUARE_SIZE // 2
-        y_display = SQUARE_SIZE * y + SQUARE_SIZE // 2
+        x_display = SQUARE_SIZE * x
+        y_display = SQUARE_SIZE * y
         return x_display, y_display
 
-    def draw(self, screen):
+    def draw_piece(self, screen):
         """Display the piece on the screen."""
-        player_color = self._player.get_color()
-        radius = SQUARE_SIZE // 2 - PADDING
-        # draw outline
-        pygame.draw.circle(screen, player_color, self.get_display_position(), radius + BORDER)
-        # draw piece
-        pygame.draw.circle(screen, player_color, self.get_display_position(), radius)
+        piece_image = self._player.get_piece_image()
+        screen.blit(piece_image, self.get_display_position())
 
 class Player:
     """Player class to manage player actions and workers."""
 
     def __init__(self, player_id: int = None, workers: dict[int, Worker] = None):
         self.player_id = player_id
-        self._color = (128, 128, 128)
+        # set of workers
         if workers is None:
-            self._workers = {}
+            self._workers = set()
         else:
             self._workers = workers
+        # piece display
+        if player_id == 1:
+            self._piece_image = utils.load_image('player1.png')
+        elif player_id == 2:
+            self._piece_image =  utils.load_image('player2.png')
+        else:
+            self._piece_image = None
 
     def __bool__(self):
         return bool(self.player_id)
@@ -109,6 +112,8 @@ class Player:
         Key (int): worker id, value: worker."""
         return self._workers
 
-    def get_color(self) -> tuple[int,int,int]:
-        """Returns the RGB color corresponding to the player."""
-        return self._color
+    # display
+
+    def get_piece_image(self) -> tuple[int,int,int]:
+        """Returns the image of the player's piece."""
+        return self._piece_image

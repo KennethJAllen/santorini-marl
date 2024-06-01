@@ -1,28 +1,37 @@
 from collections import defaultdict
 import math
-import pygame
 
 from santorini.player import Worker
 from santorini import utils
 
 class Board:
-    """Board class to handle the game board and buildings."""
+    """Board class to handle the game board, buildings, board state, and displaying the board."""
 
     def __init__(self, grid_size: int = 5, max_building_height: int = 3):
         """
         Initializes the game board.
 
-        :param grid_size = 5: The length and width of the square board
-        :param max_building_height = 3: The maximum height of a non-capped building
+        _grid_size: The length and width of the square board. Default 5.
+        _max_building_height: The maximum height of a non-capped building. Default 3.
+        _setup_game: Flag if the game needs to be set up. Default True.
+        _game_over: Flag if the game is over. Default False.
         """
         self._grid_size = int(grid_size)
         self._max_building_height = int(max_building_height)
+        self._setup_game = True
         self._game_over = False
 
         # board state stored as a dict:
         # key: tuple of integers (x,y) representing location on the board
         # value: list of worker and building height.
         self._state = defaultdict(lambda: [Worker(), 0])
+
+        # display
+        self.building_images = {0: utils.load_image('level0.png'),
+                                1: utils.load_image('level1.png'),
+                                2: utils.load_image('level2.png'),
+                                3: utils.load_image('level3.png'),
+                                'dome': utils.load_image('dome.png')}
 
     def get_grid_size(self) -> int:
         """
@@ -200,16 +209,18 @@ class Board:
         """Returns True if a player has won, False otherwise."""
         return self._game_over
 
-# pygame methods for display
+    # display
 
     def display(self, screen):
         """Prints the board state to the console."""
-        black = (0, 0, 0)
-        screen.fill(black)
         grid_size = self.get_grid_size()
         for row_index in range(grid_size):
             for col_index in range(grid_size):
                 position = (row_index, col_index)
+                display_position = utils.convert_to_display_position(position)
                 worker = self.get_position_worker(position)
                 height = self.get_position_height(position)
-                pygame.draw.circle(screen, color=(255, 255, 255), center=(50*row_index, 50*col_index), radius=30)
+                # display images
+                screen.blit(self.building_images[height], display_position)
+                if worker:
+                    screen.blit(worker.get_player().get_piece_image(), display_position)

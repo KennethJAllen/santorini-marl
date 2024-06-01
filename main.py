@@ -6,7 +6,8 @@ import pygame
 from santorini.game import Game
 from santorini.board import Board
 from santorini.player import Player
-from santorini.config import WIDTH, HEIGHT, GRID_SIZE, FPS, NUM_PLAYERS
+from santorini import utils
+from santorini.config import WIDTH, HEIGHT, GRID_SIZE, FPS
 
 async def main():
     """Entry point to start the game."""
@@ -16,7 +17,7 @@ async def main():
     clock = pygame.time.Clock()
 
     board = Board(grid_size = GRID_SIZE)
-    num_players = NUM_PLAYERS # default 2 players
+    num_players = 2 # default 2 players
 
     # Initialize players
     players = []
@@ -24,7 +25,7 @@ async def main():
         players.append(Player(player_id))
 
     # Initialize the game with the board and players
-    game = Game(players, board)
+    game = Game(players, board, screen)
 
     # Start the game
     running = True
@@ -36,12 +37,15 @@ async def main():
                 running = False
 
             if event.type == pygame.MOUSEBUTTONDOWN:
-                pass
+                display_position = pygame.mouse.get_pos()
+                row, col = utils.convert_to_position(display_position)
+                game.select(row, col)
+
         #game.setup_board()
         #game.game_loop()
         board.display(screen)
         pygame.display.update()
-        await asyncio.sleep(0)
+        await asyncio.sleep(0) # for converting to WASM
 
 if __name__ == "__main__":
     asyncio.run(main())

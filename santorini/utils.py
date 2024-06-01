@@ -1,4 +1,7 @@
 """Utility functions"""
+import os
+import pygame
+from santorini.config import SQUARE_SIZE
 
 def is_adjacent(position1: tuple[int, int], position2: tuple[int, int]) -> bool:
     """
@@ -19,3 +22,21 @@ def algebraic_position_to_indices(algebraic_position: str) -> tuple[int, int]:
     first_position = int(algebraic_position[1:]) - 1 # Converts 1 to 0, 2 to 1, etc.
     second_position = ord(algebraic_position[0]) - 65 # Converts A to 0, B to 1, etc.
     return first_position, second_position
+
+# display
+
+def convert_to_display_position(position: tuple[int, int]) -> tuple[int, int]:
+    """Converts the corresponding cell on the board to the position in pixels on the screen."""
+    x, y = position
+    return x * SQUARE_SIZE, y * SQUARE_SIZE
+
+def convert_to_position(display_position: tuple[int, int]) -> tuple[int, int]:
+    """Converts the position on the screen to the board position."""
+    x_display, y_display = display_position
+    return x_display // SQUARE_SIZE, y_display // SQUARE_SIZE
+
+def load_image(filename):
+    """Construct the path to the file in the assets folder"""
+    path = os.path.join('santorini/assets', filename)
+    image = pygame.image.load(path)
+    return image

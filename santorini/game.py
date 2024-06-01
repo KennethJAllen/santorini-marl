@@ -3,18 +3,20 @@ from santorini.board import Board
 from santorini.player import Player, Worker
 from santorini import utils
 
-# todo: Add function that finds valid moves for player
-# todo: make it so if a player has no moves they lose
-# todo: fix bug allowing player to place worker on top of another worker
+# todo: Add function that finds valid moves for player.
+# todo: make it so if a player has no moves they lose.
+# todo: fix bug allowing player to place worker on top of another worker.
+# todo: make it so board game be set up and moves can be executed with clicks.
 
 class Game:
     """Game logic, setup, and main loop."""
 
-    def __init__(self, players: list[Player], board: Board):
+    def __init__(self, players: list[Player], board: Board, screen):
         self.players = players # List of Player objects participating in the game
         self.board = board  # The game board, an instance of the Board class
         self.num_workers = 2 # number of workers each player has
         self.current_player_index = 0  # Index to keep track of whose turn it is
+        self.screen = screen # screen display
 
     def setup_board(self):
         """Prepare the game board for play (e.g., initialize players, place workers)"""
