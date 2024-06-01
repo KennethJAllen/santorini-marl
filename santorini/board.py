@@ -1,5 +1,6 @@
 from collections import defaultdict
 import math
+import pygame
 
 from santorini.player import Worker
 from santorini import utils
@@ -199,14 +200,16 @@ class Board:
         """Returns True if a player has won, False otherwise."""
         return self._game_over
 
-    def display(self):
+# pygame methods for display
+
+    def display(self, screen):
         """Prints the board state to the console."""
+        black = (0, 0, 0)
+        screen.fill(black)
         grid_size = self.get_grid_size()
         for row_index in range(grid_size):
-            board_row = []
             for col_index in range(grid_size):
                 position = (row_index, col_index)
                 worker = self.get_position_worker(position)
                 height = self.get_position_height(position)
-                board_row.append((worker.display(), str(height)))
-            print(board_row)
+                pygame.draw.circle(screen, color=(255, 255, 255), center=(50*row_index, 50*col_index), radius=30)

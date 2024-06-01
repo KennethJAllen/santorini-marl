@@ -1,10 +1,13 @@
 """Defines the Worker and Player classes."""
 from __future__ import annotations
+import pygame
+
+from .config import SQUARE_SIZE, PADDING, BORDER
 
 class Worker:
     """Worker class to represent a player's worker on the board."""
 
-    def __init__(self, worker_id: int = None, player: Player = None, gender = ""):
+    def __init__(self, worker_id: int = None, player: Player = None):
         """
         Initializes a new worker with a player, an identifier, and an initial position on the board.
         Default values represent no worker.
@@ -16,7 +19,6 @@ class Worker:
         """
         self._worker_id = worker_id
         self._player = player
-        self._gender = gender
         self._position = None
         self._valid_moves = None
 
@@ -28,7 +30,7 @@ class Worker:
             # don't attempt to compare against unrelated types
             return NotImplemented
 
-        return self._player is other._player and self._worker_id == other._worker_id and self._gender == other._gender
+        return self._player is other._player and self._worker_id == other._worker_id
 
     def display(self) -> None:
         """Displayers the worker info."""
@@ -60,13 +62,30 @@ class Worker:
         """Get the valid moves for this worker."""
         return self._valid_moves
 
+    # display
+
+    def get_display_position(self) -> tuple[int,int]:
+        """Returns the center of the square corresponding to the worker on the display board."""
+        x, y = self._position
+        x_display = SQUARE_SIZE * x + SQUARE_SIZE // 2
+        y_display = SQUARE_SIZE * y + SQUARE_SIZE // 2
+        return x_display, y_display
+
+    def draw(self, screen):
+        """Display the piece on the screen."""
+        player_color = self._player.get_color()
+        radius = SQUARE_SIZE // 2 - PADDING
+        # draw outline
+        pygame.draw.circle(screen, player_color, self.get_display_position(), radius + BORDER)
+        # draw piece
+        pygame.draw.circle(screen, player_color, self.get_display_position(), radius)
 
 class Player:
     """Player class to manage player actions and workers."""
 
-    def __init__(self, player_id: int = None, workers: dict[int, Worker] = None, god_card = None):
+    def __init__(self, player_id: int = None, workers: dict[int, Worker] = None):
         self.player_id = player_id
-        self._god_card = god_card
+        self._color = (128, 128, 128)
         if workers is None:
             self._workers = {}
         else:
@@ -89,3 +108,7 @@ class Player:
         """Get the dictionary of workers.
         Key (int): worker id, value: worker."""
         return self._workers
+
+    def get_color(self) -> tuple[int,int,int]:
+        """Returns the RGB color corresponding to the player."""
+        return self._color

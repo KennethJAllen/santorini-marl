@@ -1,30 +1,23 @@
-import asyncio
+# pylint: disable=locally-disabled no-member, missing-module-docstring
 
+import asyncio
 import pygame
 
 from santorini.game import Game
 from santorini.board import Board
 from santorini.player import Player
+from santorini.config import WIDTH, HEIGHT, GRID_SIZE, FPS, NUM_PLAYERS
 
 async def main():
     """Entry point to start the game."""
-    # Initialize Pygame
-    pygame.init()
-
-    # Constants for the game window
-    SCREEN_WIDTH = 800
-    SCREEN_HEIGHT = 600
-    FPS = 30  # Frames per second
-
     # Set up the display
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption("Santorini")
-
-    # Set up the clock
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption('Santorini')
     clock = pygame.time.Clock()
-    
-    board = Board()
-    num_players = 2 # default 2 players
+
+    board = Board(grid_size = GRID_SIZE)
+    num_players = NUM_PLAYERS # default 2 players
+
     # Initialize players
     players = []
     for player_id in range(1,num_players+1):
@@ -36,8 +29,18 @@ async def main():
     # Start the game
     running = True
     while running:
-        game.setup_board()
-        game.game_loop()
+        clock.tick(FPS)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                pass
+        #game.setup_board()
+        #game.game_loop()
+        board.display(screen)
+        pygame.display.update()
         await asyncio.sleep(0)
 
 if __name__ == "__main__":
