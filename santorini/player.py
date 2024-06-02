@@ -7,7 +7,7 @@ from santorini.config import SQUARE_SIZE
 class Worker:
     """Worker class to represent a player's worker on the board."""
 
-    def __init__(self, worker_id: int = None, player: Player = None):
+    def __init__(self, worker_id: int = None, player: Player = None, position: tuple[int, int] = None):
         """
         Initializes a new worker with a player, an identifier, and an initial position on the board.
         Default values represent no worker.
@@ -19,8 +19,9 @@ class Worker:
         """
         self._worker_id = worker_id
         self._player = player
-        self._position = None
-        self._valid_moves = None
+        self._position = position
+        self._valid_moves = None # The valid locations the worker can move to.
+        self._valid_builds = None # The valid locations the worker can build on.
 
     def __bool__(self):
         return bool(self._player or self._worker_id)
@@ -55,12 +56,20 @@ class Worker:
         return self._position
 
     def set_valid_moves(self, valid_moves: set[tuple[int,int]]) -> None:
-        """Set the worker position."""
-        self._position = valid_moves
+        """Set the valid moves for the worker."""
+        self._valid_moves = valid_moves
 
     def get_valid_moves(self) -> set[tuple[int,int]]:
         """Get the valid moves for this worker."""
         return self._valid_moves
+
+    def set_valid_builds(self, valid_builds: set[tuple[int,int]]) -> None:
+        """Set the valid build locations for the worker."""
+        self._valid_builds = valid_builds
+
+    def get_valid_builds(self) -> set[tuple[int,int]]:
+        """Get the valid build locations for the worker."""
+        return self._valid_builds
 
     # display
 
@@ -83,7 +92,7 @@ class Player:
         self.player_id = player_id
         # set of workers
         if workers is None:
-            self._workers = set()
+            self._workers = []
         else:
             self._workers = workers
         # piece display
@@ -100,19 +109,12 @@ class Player:
     def add_worker(self, worker: Worker):
         """Adds a worker to the workers dictionary.
         Key (int): worker id, value: worker."""
-        worker_id = worker.get_worker_id()
-        self._workers[worker_id] = worker
-
-    def get_worker(self, worker_id):
-        """Returns the player's worker with the assosiated worker id."""
-        return self._workers[worker_id]
+        self._workers.append(worker)
 
     def get_workers(self) -> dict[int, Worker]:
         """Get the dictionary of workers.
         Key (int): worker id, value: worker."""
         return self._workers
-
-    # display
 
     def get_piece_image(self) -> tuple[int,int,int]:
         """Returns the image of the player's piece."""

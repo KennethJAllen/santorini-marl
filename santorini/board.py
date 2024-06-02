@@ -13,13 +13,14 @@ class Board:
 
         _grid_size: The length and width of the square board. Default 5.
         _max_building_height: The maximum height of a non-capped building. Default 3.
-        _setup_game: Flag if the game needs to be set up. Default True.
         _game_over: Flag if the game is over. Default False.
+        _select: The space the current player has selected.
         """
         self._grid_size = int(grid_size)
         self._max_building_height = int(max_building_height)
-        self._setup_game = True
         self._game_over = False
+        self._selected_position = None
+        self._selected_worker = None
 
         # board state stored as a dict:
         # key: tuple of integers (x,y) representing location on the board
@@ -31,7 +32,7 @@ class Board:
                                 1: utils.load_image('level1.png'),
                                 2: utils.load_image('level2.png'),
                                 3: utils.load_image('level3.png'),
-                                'dome': utils.load_image('dome.png')}
+                                math.inf: utils.load_image('dome.png')}
 
     def get_grid_size(self) -> int:
         """
@@ -50,6 +51,7 @@ class Board:
         self._state[position][0] = worker
         if worker:
             worker.set_positon(position)
+            self.update_worker_valid_moves(worker)
 
     def get_position_height(self, position: tuple[int, int]) -> int:
         """Returns the building height at the given position.
@@ -70,8 +72,8 @@ class Board:
     def is_on_board(self, position: tuple[int, int]) -> bool:
         """Returns true if position is on the board. Returns false otherwise."""
         grid_size = self.get_grid_size()
-        x_position, y_position = position
-        if 0 <= x_position < grid_size and 0 <= y_position < grid_size:
+        x, y = position
+        if 0 <= x < grid_size and 0 <= y < grid_size:
             return True
         return False
 
@@ -79,9 +81,9 @@ class Board:
         """
         Checks if a move from worker_position to target_position is valid.
 
-        :param worker_position: A tuple (xc, yc) indicating the worker's current position.
-        :param target_position: A tuple (xt, yt) indicating the desired position to move to.
-        :return: True if the move is valid, False otherwise.
+        worker_position: A tuple (xc, yc) indicating the worker's current position.
+        target_position: A tuple (xt, yt) indicating the desired position to move to.
+        return: True if the move is valid, False otherwise.
 
         A move is valid if it is:
         1) To an adjacent square on the board
@@ -104,11 +106,9 @@ class Board:
 
         current_height = self.get_position_height(worker_position)
         target_height = self.get_position_height(target_position)
-        if target_height > current_height + 1:
+        if target_height >= current_height + 1:
             # check target_height is at most 1 more than current_height
             return False
-
-        self.check_win_condition(target_position)
         return True
 
     def move_worker(self, current_position: tuple[int, int], target_position: tuple[int, int]) -> None:
@@ -119,13 +119,8 @@ class Board:
         new_position: A tuple (x, y) indicating the new position to move the worker to.
         return: True if the move won the game, false otherwise.
         """
-        if not self.can_move(current_position, target_position):
-            raise ValueError("That is not a valid move.")
-
         worker = self.get_position_worker(current_position)
-
-        # Worker with default parameters represents no worker.
-        self.set_position_worker(current_position, Worker())
+        self.set_position_worker(current_position, Worker()) # default param worker represents no worker
         self.set_position_worker(target_position, worker)
         self.check_win_condition(target_position)
 
@@ -133,9 +128,9 @@ class Board:
         """
         Checks if building on build position is valid, given the worker's current position.
 
-        :param worker_position: A tuple indicating the worker's current position.
-        :param build_position: A tuple indicating the position to build on.
-        :return: True if the build is valid, False otherwise.
+        worker_position: A tuple indicating the worker's current position.
+        build_position: A tuple indicating the position to build on.
+        return: True if the build is valid, False otherwise.
         """
         # Check positions are on the board
         if not self.is_on_board(worker_position) or not self.is_on_board(build_position):
@@ -160,7 +155,7 @@ class Board:
         """
         Increments the building level on build_position if the build is valid.
 
-        :param build_position: A tuple (x, y) indicating the position to build on.
+        build_position: A tuple (x, y) indicating the position to build on.
         """
         if not self.can_build(worker_position, build_position):
             raise ValueError("That is not a valid build position.")
@@ -172,7 +167,7 @@ class Board:
         else:
             self.set_position_height(build_position, math.inf)
 
-    def can_place(self, position):
+    def can_place(self, position: tuple[int, int]) -> bool:
         """Check if placing worker on position is valid."""
         # Check positions are on the board
         if not self.is_on_board(position):
@@ -182,27 +177,44 @@ class Board:
             return False
         return True
 
-    def update_worker_valid_moves(self, worker_position: tuple[int,int]) -> None:
-        """Returns set of valid moves that a worker in worker position can move to."""
-        x, y = worker_position
-        # check all adjacent positions for valid moves
-        valid_moves = set()
-        for i in range(-1,2):
-            for j in range(-1,2):
-                target_position = x + i, y + j
-                if (i != 0 or j != 0) and self.can_move(worker_position, target_position):
-                    valid_moves.add(target_position)
-        worker = self.get_position_worker(worker_position)
-        worker.set_valid_moves(valid_moves)
+    def place(self, position: tuple[int, int], worker: Worker) -> None:
+        """Place the worker on the location."""
+        self.set_position_worker(position, worker) # sets worker on board
 
-    def check_win_condition(self, target_position: tuple[int,int]):
+    def update_worker_valid_moves(self, worker: Worker) -> None:
+        """Returns set of valid moves that a worker in worker position can move to."""
+        if worker:
+            x, y = worker.get_position()
+            # check all adjacent positions for valid moves
+            valid_moves = set()
+            for i in range(-1,2):
+                for j in range(-1,2):
+                    target_position = x + i, y + j
+                    if (i != 0 or j != 0) and self.can_move((x, y), target_position):
+                        valid_moves.add(target_position)
+            worker.set_valid_moves(valid_moves)
+
+    def update_worker_valid_builds(self, worker: Worker) -> None:
+        """Returns set of valid moves that a worker in worker position can move to."""
+        if worker:
+            x, y = worker.get_position()
+            # check all adjacent positions for valid builds
+            valid_builds = set()
+            for i in range(-1,2):
+                for j in range(-1,2):
+                    target_position = x + i, y + j
+                    if (i != 0 or j != 0) and self.can_build((x, y), target_position):
+                        valid_builds.add(target_position)
+            worker.set_valid_builds(valid_builds)
+
+    def check_win_condition(self, position: tuple[int,int]):
         """
         Checks if moving to the given position meets the win condition (reaching the third level).
 
-        :param target_position: A tuple (x, y) indicating the position to check.
-        :return: True if the position is on the third level, False otherwise.
+        target_position: A tuple (x, y) indicating the position to check.
+        return: True if the position is on the third level, False otherwise.
         """
-        if self.get_position_height(target_position) == self._max_building_height:
+        if self.get_position_height(position) == self._max_building_height:
             self._game_over = True
 
     def game_over_status(self):
@@ -211,8 +223,29 @@ class Board:
 
     # display
 
+    def set_selected_position(self, position: tuple[int, int]) -> None:
+        """Sets the current player's selected position."""
+        if position is None:
+            self._selected_position = None
+        elif self.is_on_board(position):
+            self._selected_position = position
+
+    def get_selected_position(self) -> tuple[int, int]:
+        """Gets the current player's selected position."""
+        return self._selected_position
+
+    def set_selected_worker(self, position: tuple[int, int]) -> None:
+        """Selects the worker in the position. Unselects the worker if worker is already selected."""
+        worker = self.get_position_worker(position)
+        if worker:
+            self._selected_worker = self.get_position_worker(position)
+
+    def get_selected_worker(self) -> tuple[int, int]:
+        """Gets the current player's selected position."""
+        return self._selected_worker
+
     def display(self, screen):
-        """Prints the board state to the console."""
+        """Prints the board state to the screen."""
         grid_size = self.get_grid_size()
         for row_index in range(grid_size):
             for col_index in range(grid_size):

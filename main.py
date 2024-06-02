@@ -11,11 +11,12 @@ from santorini.config import WIDTH, HEIGHT, GRID_SIZE, FPS
 
 async def main():
     """Entry point to start the game."""
-    # Set up the display
+    # Initialize display
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption('Santorini')
     clock = pygame.time.Clock()
 
+    # Initialize board
     board = Board(grid_size = GRID_SIZE)
     num_players = 2 # default 2 players
 
@@ -25,27 +26,27 @@ async def main():
         players.append(Player(player_id))
 
     # Initialize the game with the board and players
-    game = Game(players, board, screen)
+    game = Game(players, board)
 
     # Start the game
     running = True
     while running:
         clock.tick(FPS)
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 display_position = pygame.mouse.get_pos()
-                row, col = utils.convert_to_position(display_position)
-                game.select(row, col)
+                position = utils.convert_to_position(display_position)
+                # Select the position and worker. Unselect worker if it is already selected.
+                game.get_board().set_selected_position(position)
+                game.get_board().set_selected_worker(position)
 
-        #game.setup_board()
-        #game.game_loop()
+        game.game_loop()
         board.display(screen)
         pygame.display.update()
-        await asyncio.sleep(0) # for converting to WASM
+        await asyncio.sleep(0) # for converting to WASM to run in browser.
 
 if __name__ == "__main__":
     asyncio.run(main())
