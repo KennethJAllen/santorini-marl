@@ -2,8 +2,6 @@
 # pylint: disable=locally-disabled, multiple-statements, fixme, line-too-long, redefined-outer-name, missing-function-docstring
 
 def test_player_add_worker(player_1, worker_a1, worker_a2):
-    worker_id_1 = worker_a1.get_worker_id()
-    worker_id_2 = worker_a2.get_worker_id()
     player_1.add_worker(worker_a1)
     player_1.add_worker(worker_a2)
     result = player_1.get_workers()
