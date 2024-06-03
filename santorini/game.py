@@ -1,24 +1,27 @@
 """Game class containing game logic."""
+import pygame
 from santorini.board import Board
 from santorini.player import Player, Worker
 
 class Game:
     """Game logic, setup, and main loop."""
 
-    def __init__(self, players: list[Player], board: Board):
+    def __init__(self, players: list[Player], board: Board, screen):
         self._board = board  # The game board, an instance of the Board class
         self._players = players # List of Player objects participating in the game
+        self._screen = screen
         self._current_player_index = 0  # Index to keep track of whose turn it is
         self._num_workers = 2 # number of workers each player has
         self._num_placed_workers = 0 # number of current player's placed workers. Used in setup
         self._moved_worker = None # tracks the worker moved
         self._game_state = 'setup' # either 'setup', 'playing', or 'game_over' depending on game state.
         self._player_action_sate = 'start_turn' # either 'move', 'build', or 'end_turn' depending on turn player's action state
-        self._winner = None
-
-    def get_board(self):
-        """Return the game board."""
-        return self._board
+        self._winner = None # the winner of the game
+    
+    def select(self, position):
+        """Update the selected location and worker."""
+        self._board.set_selected_position(position)
+        self._board.set_selected_worker(position)
 
     def setup_board(self):
         """Prepare the game board for play (e.g., initialize players, place workers)."""
@@ -55,14 +58,12 @@ class Game:
         elif self._game_state == 'playing':
             if self._player_action_sate == 'start_turn':
                 self.start_turn()
-            elif self._player_action_sate == 'move':
+            if self._player_action_sate == 'move':
                 self.move_action()
-            elif self._player_action_sate == 'build':
+            if self._player_action_sate == 'build':
                 self.build_action()
-            elif self._player_action_sate == 'end_turn':
+            if self._player_action_sate == 'end_turn':
                 self.end_turn()
-            else:
-                raise ValueError("Action state not one of 'start_turn', 'move', 'build', or 'end_turn'.")
         # end game
         elif self._game_state == 'game_over':
             pass
@@ -136,3 +137,8 @@ class Game:
     def get_winner(self):
         """Return the player that won the game."""
         return self._winner
+
+    def display_game(self):
+        """Displays the current board state."""
+        self._board.display(self._screen)
+        pygame.display.update()

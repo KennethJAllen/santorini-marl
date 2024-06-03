@@ -2,7 +2,6 @@
 
 import asyncio
 import pygame
-
 from santorini.game import Game
 from santorini.board import Board
 from santorini.player import Player
@@ -26,7 +25,7 @@ async def main():
         players.append(Player(player_id))
 
     # Initialize the game with the board and players
-    game = Game(players, board)
+    game = Game(players, board, screen)
 
     # Start the game
     running = True
@@ -45,13 +44,10 @@ async def main():
                 display_position = pygame.mouse.get_pos()
                 position = utils.convert_to_position(display_position)
                 # Select the position and worker. Unselect worker if it is already selected.
-                game.get_board().set_selected_position(position)
-                game.get_board().set_selected_worker(position)
+                game.select(position)
+                game.game_loop()
 
-
-        game.game_loop()
-        board.display(screen) #TODO: refactor so display is updated when a piece is moved an a location is built
-        pygame.display.update()
+        game.display_game()
         await asyncio.sleep(0) # for converting to WASM to run in browser.
 
 if __name__ == "__main__":
