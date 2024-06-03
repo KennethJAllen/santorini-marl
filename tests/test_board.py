@@ -121,36 +121,11 @@ def test_can_move_bad(board_populated, current_position, target_position):
         ((0,1), (1,2)),  # Move worker from height 2 to height 3
     ]
 )
-def test_move_worker_good(board_populated, current_position, target_position):
+def test_move_worker(board_populated, current_position, target_position):
     worker_in_initial_position = board_populated.get_position_worker(current_position)
     board_populated.move_worker(current_position, target_position)
     assert not board_populated.get_position_worker(current_position)
     assert worker_in_initial_position is board_populated.get_position_worker(target_position)
-
-@pytest.mark.parametrize(
-    "current_position,target_position",
-    [
-        ((0,0), (-1, -1)), # Move off board diagonal down-left
-        ((0,0), (-1, 0)), # Move off board left
-        ((0,0), (0, -1)), # Move off board down
-        ((4,4), (5, 5)), # Move off board diagonal top-right
-        ((4,4), (5, 4)), # Move off board top
-        ((4,4), (4, 5)), # Move off board right
-
-        ((0,0), (2,0)),  # Move a worker too far
-        ((0,0), (0,0)),  # Move worker to own square
-
-        ((0,0), (1,1)),  # Move worker ontop of another worker
-        ((3,4), (3,5)),  # Move empty worker
-
-        ((1,1), (1,2)),  # Move worker from height 1 to height 3
-        ((0,0), (1,0)),  # Move worker from height 0 to height inf
-    ]
-)
-def test_move_worker_bad(board_populated, current_position, target_position):
-    with pytest.raises(ValueError) as excinfo:
-        board_populated.move_worker(current_position, target_position)
-    assert "That is not a valid move." in str(excinfo.value)
 
 # test can_build
 

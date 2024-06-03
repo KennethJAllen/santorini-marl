@@ -7,5 +7,5 @@ def test_player_add_worker(player_1, worker_a1, worker_a2):
     player_1.add_worker(worker_a1)
     player_1.add_worker(worker_a2)
     result = player_1.get_workers()
-    expected = {worker_id_1: worker_a1, worker_id_2: worker_a2}
+    expected = [worker_a1, worker_a2]
     assert result == expected
