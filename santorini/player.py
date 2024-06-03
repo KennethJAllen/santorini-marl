@@ -33,16 +33,6 @@ class Worker:
 
         return self._player is other._player and self._worker_id == other._worker_id
 
-    def display(self) -> None:
-        """Displayers the worker info."""
-        if self:
-            return f"{self._player.player_id}_{self._worker_id}"
-        return ""
-
-    def get_worker_id(self) -> int:
-        """Returns the worker id."""
-        return self._worker_id
-
     def get_player(self) -> Player:
         """Returns the player that the worker belongs to."""
         return self._player
@@ -59,11 +49,11 @@ class Worker:
         """Set the valid moves for the worker."""
         self._valid_moves = valid_moves
 
-    def get_valid_moves(self) -> set[tuple[int,int]]:
+    def get_valid_moves(self) -> list[tuple[int,int]]:
         """Get the valid moves for this worker."""
         return self._valid_moves
 
-    def set_valid_builds(self, valid_builds: set[tuple[int,int]]) -> None:
+    def set_valid_builds(self, valid_builds: list[tuple[int,int]]) -> None:
         """Set the valid build locations for the worker."""
         self._valid_builds = valid_builds
 
@@ -89,7 +79,7 @@ class Player:
     """Player class to manage player actions and workers."""
 
     def __init__(self, player_id: int = None, workers: dict[int, Worker] = None):
-        self.player_id = player_id
+        self._player_id = player_id
         # set of workers
         if workers is None:
             self._workers = []
@@ -104,7 +94,11 @@ class Player:
             self._piece_image = None
 
     def __bool__(self):
-        return bool(self.player_id)
+        return bool(self._player_id)
+    
+    def get_player_id(self):
+        """Reutnrs the id corresponding to the player."""
+        return self._player_id
 
     def add_worker(self, worker: Worker):
         """Adds a worker to the workers dictionary.

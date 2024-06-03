@@ -1,7 +1,7 @@
 from collections import defaultdict
 import math
 
-from santorini.player import Worker
+from santorini.player import Worker, Player
 from santorini import utils
 
 class Board:
@@ -122,7 +122,7 @@ class Board:
         worker = self.get_position_worker(current_position)
         self.set_position_worker(current_position, Worker()) # default param worker represents no worker
         self.set_position_worker(target_position, worker)
-        self.check_win_condition(target_position)
+        self.check_height_win_condition(target_position)
 
     def can_build(self, worker_position: tuple[int, int], build_position: tuple[int, int]) -> bool:
         """
@@ -207,7 +207,9 @@ class Board:
                         valid_builds.add(target_position)
             worker.set_valid_builds(valid_builds)
 
-    def check_win_condition(self, position: tuple[int,int]):
+    # end game
+
+    def check_height_win_condition(self, position: tuple[int,int]):
         """
         Checks if moving to the given position meets the win condition (reaching the third level).
 
@@ -216,6 +218,14 @@ class Board:
         """
         if self.get_position_height(position) == self._max_building_height:
             self._game_over = True
+
+    def check_cannot_move_lose_condition(self, player: Player) -> bool:
+        """Return True if a player cannot move. False otherwise."""
+        for worker in player.get_workers():
+            if worker.get_valid_moves(): # if there is at least one valid move
+                return False
+        self._game_over = True
+        return True
 
     def game_over_status(self):
         """Returns True if a player has won, False otherwise."""

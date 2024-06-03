@@ -32,6 +32,11 @@ async def main():
     running = True
     while running:
         clock.tick(FPS)
+
+        if game.get_winner() is not None:
+            print(f"Player {game.get_winner().get_player_id()} wins!")
+            running = False
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -43,8 +48,9 @@ async def main():
                 game.get_board().set_selected_position(position)
                 game.get_board().set_selected_worker(position)
 
+
         game.game_loop()
-        board.display(screen)
+        board.display(screen) #TODO: refactor so display is updated when a piece is moved an a location is built
         pygame.display.update()
         await asyncio.sleep(0) # for converting to WASM to run in browser.
 
