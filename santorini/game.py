@@ -83,15 +83,12 @@ class Game:
                 self._board.move_worker(worker_position, selected_space)
                 # track the moved worker
                 self._moved_worker = selected_worker
-                # update all valid actions
-                self.update_valid_actions()
-                print(f"valid moves: {selected_worker.get_valid_moves()}")
                 # check if move won the game
                 if self.check_win_condition():
                     player = self._players[self._current_player_index]
                     self.end_game(player)
-
-                # update action state
+                # update valid build actions and action state
+                self.update_valid_build_actions()
                 self._player_action_sate = 'build'
 
     def build_action(self):
@@ -101,7 +98,8 @@ class Game:
             worker_position = self._moved_worker.get_position()
             # execute build
             self._board.build(worker_position, selected_position)
-            # update action state
+            # update all valid move actions and action state
+            self.update_valid_move_actions()
             self._player_action_sate = 'end_turn'
 
     def end_turn(self):
@@ -112,10 +110,12 @@ class Game:
         self._board.set_selected_position(None)
         self._player_action_sate = 'move'
 
-    def update_valid_actions(self):
-        """Updates the moved worker's valid build locations and all worker's valid move locations."""
+    def update_valid_build_actions(self):
+        """Updates the moved worker's valid build locations."""
         self._board.update_worker_valid_builds(self._moved_worker) # update valid build location
-        print(self._moved_worker.get_valid_builds())
+
+    def update_valid_move_actions(self):
+        """Updates all worker's valid move locations."""
         for player in self._players:
             for worker in player.get_workers():
                 self._board.update_worker_valid_moves(worker)

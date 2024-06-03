@@ -106,14 +106,14 @@ class Board:
 
         current_height = self.get_position_height(worker_position)
         target_height = self.get_position_height(target_position)
-        if target_height >= current_height + 1:
+        if target_height > current_height + 1:
             # check target_height is at most 1 more than current_height
             return False
         return True
 
     def move_worker(self, current_position: tuple[int, int], target_position: tuple[int, int]) -> None:
         """
-        Moves a worker from current_position to new_position if the move is valid.
+        Moves a worker from current_position to new_position.
 
         current_position: A tuple (x, y) indicating the worker's current position.
         new_position: A tuple (x, y) indicating the new position to move the worker to.
