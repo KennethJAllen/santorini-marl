@@ -6,7 +6,9 @@ from santorini.game import Game
 from santorini.board import Board
 from santorini.player import Player
 from santorini import utils
-from santorini.config import WIDTH, HEIGHT, GRID_SIZE, FPS
+from santorini.config import WIDTH, HEIGHT, GRID_SIZE, FPS, NUM_PLAYERS
+
+# BUG: If a player loses because they have no valid moves, a click must be made before the player loses.
 
 async def main():
     """Entry point to start the game."""
@@ -17,7 +19,7 @@ async def main():
 
     # Initialize board
     board = Board(grid_size = GRID_SIZE)
-    num_players = 2 # default 2 players
+    num_players = NUM_PLAYERS
 
     # Initialize players
     players = []

@@ -2,6 +2,7 @@
 import pygame
 from santorini.board import Board
 from santorini.player import Player, Worker
+from santorini.config import NUM_WORKERS
 
 class Game:
     """Game logic, setup, and main loop."""
@@ -11,13 +12,12 @@ class Game:
         self._players = players # List of Player objects participating in the game
         self._screen = screen
         self._current_player_index = 0  # Index to keep track of whose turn it is
-        self._num_workers = 2 # number of workers each player has
         self._num_placed_workers = 0 # number of current player's placed workers. Used in setup
         self._moved_worker = None # tracks the worker moved
         self._game_state = 'setup' # either 'setup', 'playing', or 'game_over' depending on game state.
-        self._player_action_sate = 'start_turn' # either 'move', 'build', or 'end_turn' depending on turn player's action state
+        self._player_action_sate = 'start_turn' # either 'start_turn', 'move', 'build', or 'end_turn' depending on turn player's action state
         self._winner = None # the winner of the game
-    
+
     def select(self, position):
         """Update the selected location and worker."""
         self._board.set_selected_position(position)
@@ -37,7 +37,7 @@ class Game:
                 self._num_placed_workers += 1
 
                 # Handles when maximum number of workers have been placed.
-                if self._num_placed_workers == self._num_workers:
+                if self._num_placed_workers == NUM_WORKERS:
                     if self._current_player_index == len(self._players) - 1:
                         # if all workers have been placed
                         self._game_state = 'playing'
