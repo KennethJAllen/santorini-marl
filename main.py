@@ -9,6 +9,9 @@ from santorini import utils
 from santorini.config import WIDTH, HEIGHT, GRID_SIZE, FPS, NUM_PLAYERS
 
 # BUG: If a player loses because they have no valid moves, a click must be made before the player loses.
+# TODO: Implement minimax AI to play against
+# TODO: Add game over screen with restart button.
+# TODO: Add piece selection highlighting and valid move highlighting
 
 async def main():
     """Entry point to start the game."""
