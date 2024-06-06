@@ -6,7 +6,7 @@ from santorini.game import Game
 from santorini.board import Board
 from santorini.player import Player
 from santorini import utils
-from santorini.config import WIDTH, HEIGHT, GRID_SIZE, FPS, NUM_PLAYERS
+from santorini.config import WIDTH, HEIGHT, GRID_SIZE, FPS, NUM_PLAYERS, LEFT
 
 # BUG: If a player loses because they have no valid moves, a click must be made before the player loses.
 # TODO: Implement minimax AI to play against
@@ -45,7 +45,7 @@ async def main():
             if event.type == pygame.QUIT:
                 running = False
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == LEFT:
                 display_position = pygame.mouse.get_pos()
                 position = utils.convert_to_position(display_position)
                 # Select the position and worker. Unselect worker if it is already selected.
