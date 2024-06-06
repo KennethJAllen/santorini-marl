@@ -28,11 +28,13 @@ class Board:
         self._state = defaultdict(lambda: [Worker(), 0])
 
         # display
-        self.building_images = {0: utils.load_image('level0.png'),
-                                1: utils.load_image('level1.png'),
-                                2: utils.load_image('level2.png'),
-                                3: utils.load_image('level3.png'),
-                                math.inf: utils.load_image('dome.png')}
+        self._images = {0: utils.load_image('level0.png'),
+                        1: utils.load_image('level1.png'),
+                        2: utils.load_image('level2.png'),
+                        3: utils.load_image('level3.png'),
+                        math.inf: utils.load_image('dome.png'),
+                        'selected': utils.load_image('highlight_selected.png'),
+                        'move': utils.load_image('highlight_moves.png')}
 
     def get_grid_size(self) -> int:
         """
@@ -254,16 +256,25 @@ class Board:
         """Gets the current player's selected position."""
         return self._selected_worker
 
-    def display(self, screen):
+    def display_building(self, position, screen):
         """Prints the board state to the screen."""
-        grid_size = self.get_grid_size()
-        for row_index in range(grid_size):
-            for col_index in range(grid_size):
-                position = (row_index, col_index)
-                display_position = utils.convert_to_display_position(position)
-                worker = self.get_position_worker(position)
-                height = self.get_position_height(position)
-                # display images
-                screen.blit(self.building_images[height], display_position)
-                if worker:
-                    screen.blit(worker.get_player().get_piece_image(), display_position)
+        display_position = utils.convert_to_display_position(position)
+        height = self.get_position_height(position)
+        screen.blit(self._images[height], display_position)
+
+    def display_worker(self, position, screen):
+        """display worker in the specified position (if any)."""
+        display_position = utils.convert_to_display_position(position)
+        worker = self.get_position_worker(position)
+        if worker:
+            screen.blit(worker.get_player().get_piece_image(), display_position)
+
+    def display_worker_highlight(self, position, screen):
+        """Highlights the worker in the given position."""
+        display_position = utils.convert_to_display_position(position)
+        screen.blit(self._images['selected'], display_position)
+
+    def display_move_hightlight(self, position, screen):
+        """Highlight potential move in the given position."""
+        display_position = utils.convert_to_display_position(position)
+        screen.blit(self._images['move'], display_position)

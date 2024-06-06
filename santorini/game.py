@@ -2,7 +2,7 @@
 import pygame
 from santorini.board import Board
 from santorini.player import Player, Worker
-from santorini.config import NUM_WORKERS
+from santorini.config import NUM_WORKERS, WIDTH, HEIGHT
 
 class Game:
     """Game logic, setup, and main loop."""
@@ -40,6 +40,7 @@ class Game:
                 if self._num_placed_workers == NUM_WORKERS:
                     if self._current_player_index == len(self._players) - 1:
                         # if all workers have been placed
+                        self.update_all_valid_move_actions()
                         self._game_state = 'playing'
                         self._current_player_index = 0
                     else:
@@ -113,7 +114,7 @@ class Game:
             # execute build
             self._board.build(worker_position, selected_position)
             # update all valid move actions and action state
-            self.update_valid_move_actions()
+            self.update_all_valid_move_actions()
             self._player_action_sate = 'end_turn'
 
     def end_turn(self):
@@ -128,7 +129,7 @@ class Game:
         """Updates the moved worker's valid build locations."""
         self._board.update_worker_valid_builds(self._moved_worker) # update valid build location
 
-    def update_valid_move_actions(self):
+    def update_all_valid_move_actions(self):
         """Updates all worker's valid move locations."""
         for player in self._players:
             for worker in player.get_workers():
@@ -138,7 +139,52 @@ class Game:
         """Return the player that won the game."""
         return self._winner
 
+    # display
+
     def display_game(self):
         """Displays the current board state."""
-        self._board.display(self._screen)
+        grid_size = self._board.get_grid_size()
+        for row_index in range(grid_size):
+            for col_index in range(grid_size):
+                position = (row_index, col_index)
+                self._board.display_building(position, self._screen)
+                self._board.display_worker(position, self._screen)
+        if self._player_action_sate == 'move':
+            self.highlight_moves()
+        if self._player_action_sate == 'build':
+            self.highlight_builds()
+        pygame.display.update()
+
+    def highlight_moves(self):
+        """Displays the selected worker and potential moves."""
+        worker = self._board.get_selected_worker()
+        turn_player = self._players[self._current_player_index]
+        if worker.get_player() == turn_player:
+            # highlight worker
+            worker_position = worker.get_position()
+            self._board.display_worker_highlight(worker_position, self._screen)
+            # re-desplay worker on top of highlight
+            self._board.display_worker(worker_position, self._screen)
+            # highlight moves
+            for move_location in worker.get_valid_moves():
+                self._board.display_move_hightlight(move_location, self._screen)
+
+
+    def highlight_builds(self):
+        """Displays potential spaces the moved worker can build on."""
+        worker = self._moved_worker
+        for build_location in worker.get_valid_builds():
+            self._board.display_move_hightlight(build_location, self._screen)
+
+    def display_game_over_screen(self):
+        """Displays the game over screen."""
+        self._screen.fill((0, 0, 0))
+        pygame.font.init()
+        font = pygame.font.SysFont('arial', 40)
+        title = font.render(f"Player {self._winner.get_player_id()} wins!", True, (255, 255, 255))
+        #restart_button = font.render('R - Restart', True, (255, 255, 255))
+        #quit_button = font.render('Q - Quit', True, (255, 255, 255))
+        self._screen.blit(title, (WIDTH/2 - title.get_width()/2, HEIGHT/2 - title.get_height()/3))
+        #self._screen.blit(restart_button, (WIDTH/2 - restart_button.get_width()/2, HEIGHT/1.9 + restart_button.get_height()))
+        #self._screen.blit(quit_button, (WIDTH/2 - quit_button.get_width()/2, HEIGHT/2 + quit_button.get_height()/2))
         pygame.display.update()

@@ -11,7 +11,6 @@ from santorini.config import WIDTH, HEIGHT, GRID_SIZE, FPS, NUM_PLAYERS, LEFT
 # BUG: If a player loses because they have no valid moves, a click must be made before the player loses.
 # TODO: Implement minimax AI to play against
 # TODO: Add game over screen with restart button.
-# TODO: Add piece selection highlighting and valid move highlighting
 
 async def main():
     """Entry point to start the game."""
@@ -31,6 +30,7 @@ async def main():
 
     # Initialize the game with the board and players
     game = Game(players, board, screen)
+    game.display_game()
 
     # Start the game
     running = True
@@ -38,7 +38,7 @@ async def main():
         clock.tick(FPS)
 
         if game.get_winner() is not None:
-            print(f"Player {game.get_winner().get_player_id()} wins!")
+            game.display_game_over_screen()
             running = False
 
         for event in pygame.event.get():
@@ -51,8 +51,8 @@ async def main():
                 # Select the position and worker. Unselect worker if it is already selected.
                 game.select(position)
                 game.game_loop()
+            game.display_game()
 
-        game.display_game()
         await asyncio.sleep(0) # for converting to WASM to run in browser.
 
 if __name__ == "__main__":
