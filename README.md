@@ -2,7 +2,7 @@
 
 [Santorini](https://boardgamegeek.com/boardgame/194655/santorini), is an abstract board game, first [published in 2004](https://boardgamegeek.com/boardgame/9963/santorini). It is a two to three player game that is typically played on a $5 \times 5$ grid.
 
-![Santorini being played](/assets/santorini.png)
+![Santorini being played](/images/santorini.png)
 
 ## 📜 Rules
 The [rules](http://www.boardspace.net/santorini/english/santorini-rules.html) are fairly simple. Each player sets up the game by placing two workers on the board. Each turn, a worker can be moved to an adjacent square, followed by building on a square adjacent to the square that worker just moved to.
