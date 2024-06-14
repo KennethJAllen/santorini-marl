@@ -97,7 +97,7 @@ class Player:
 
     def __bool__(self):
         return bool(self._player_id)
-    
+
     def get_player_id(self):
         """Reutnrs the id corresponding to the player."""
         return self._player_id

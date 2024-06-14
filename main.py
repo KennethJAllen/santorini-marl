@@ -8,9 +8,6 @@ from santorini.player import Player
 from santorini import utils
 from santorini.config import WIDTH, HEIGHT, GRID_SIZE, FPS, NUM_PLAYERS, LEFT
 
-# BUG: If a player loses because they have no valid moves, a click must be made before the player loses.
-# TODO: Implement minimax AI to play against
-
 async def main():
     """Entry point to start the game."""
     running = True

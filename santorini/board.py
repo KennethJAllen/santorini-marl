@@ -124,7 +124,7 @@ class Board:
         return: True if the move won the game, false otherwise.
         """
         worker = self.get_position_worker(current_position)
-        self.set_position_worker(current_position, Worker()) # default param worker represents no worker
+        self.set_position_worker(current_position, Worker()) # default worker represents no worker
         self.set_position_worker(target_position, worker)
         self.check_height_win_condition(target_position)
 
