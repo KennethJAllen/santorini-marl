@@ -36,20 +36,18 @@ async def main():
             clock.tick(FPS)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    running = False
+                    running, game_loop = False, False
 
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == LEFT:
-                    display_position = pygame.mouse.get_pos()
-                    position = utils.convert_to_position(display_position)
-                    # Select the position and worker. Unselect worker if it is already selected.
-                    game.select(position)
-                    game.game_loop()
-                    game.display_game()
-
-                if event.type == pygame.KEYDOWN:
-                    # If r is pressed, the game is restarted
-                    if event.key == pygame.K_r:
+                    if game.get_game_state() == 'game_over':
                         game_loop = False
+                    else:
+                        display_position = pygame.mouse.get_pos()
+                        position = utils.convert_to_position(display_position)
+                        # Select the position and worker. Unselect worker if it is already selected.
+                        game.select(position)
+                        game.game_loop()
+                        game.display_game()
 
             await asyncio.sleep(0) # for pygbag to run in browser.
 

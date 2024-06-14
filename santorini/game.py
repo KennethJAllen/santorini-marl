@@ -182,7 +182,7 @@ class Game:
         game_over_position = (WIDTH/2 - game_over_text.get_width()/2, HEIGHT/2 - game_over_text.get_height()/3)
         self._screen.blit(game_over_text, game_over_position)
         # restart text
-        restart_text = font.render('R - Restart', True, white)
+        restart_text = font.render('Press to restart', True, white)
         restart_position = (WIDTH/2 - restart_text.get_width()/2, HEIGHT/1.9 + restart_text.get_height())
         self._screen.blit(restart_text, restart_position)
         pygame.display.update()
