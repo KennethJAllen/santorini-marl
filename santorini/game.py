@@ -135,31 +135,34 @@ class Game:
             for worker in player.get_workers():
                 self._board.update_worker_valid_moves(worker)
 
-    def get_winner(self):
-        """Return the player that won the game."""
-        return self._winner
+    def get_game_state(self):
+        """Returns the state of the game."""
+        return self._game_state
 
     # display
 
     def display_game(self):
         """Displays the current board state."""
-        grid_size = self._board.get_grid_size()
-        for row_index in range(grid_size):
-            for col_index in range(grid_size):
-                position = (row_index, col_index)
-                self._board.display_building(position, self._screen)
-                self._board.display_worker(position, self._screen)
-        if self._player_action_sate == 'move':
-            self.highlight_moves()
-        if self._player_action_sate == 'build':
-            self.highlight_builds()
+        if self._game_state == 'game_over':
+            self.display_game_over_screen()
+        else:
+            grid_size = self._board.get_grid_size()
+            for row_index in range(grid_size):
+                for col_index in range(grid_size):
+                    position = (row_index, col_index)
+                    self._board.display_building(position, self._screen)
+                    self._board.display_worker(position, self._screen)
+            if self._player_action_sate == 'move':
+                self.highlight_moves()
+            if self._player_action_sate == 'build':
+                self.highlight_builds()
         pygame.display.update()
 
     def highlight_moves(self):
         """Displays the selected worker and potential moves."""
         worker = self._board.get_selected_worker()
         turn_player = self._players[self._current_player_index]
-        if worker.get_player() == turn_player:
+        if worker and worker.get_player() == turn_player:
             # highlight worker
             worker_position = worker.get_position()
             self._board.display_worker_highlight(worker_position, self._screen)
@@ -174,17 +177,15 @@ class Game:
         """Displays potential spaces the moved worker can build on."""
         worker = self._moved_worker
         for build_location in worker.get_valid_builds():
-            self._board.display_move_hightlight(build_location, self._screen)
+            self._board.display_build_hightlight(build_location, self._screen)
 
     def display_game_over_screen(self):
         """Displays the game over screen."""
         self._screen.fill((0, 0, 0))
         pygame.font.init()
         font = pygame.font.SysFont('arial', 40)
-        title = font.render(f"Player {self._winner.get_player_id()} wins!", True, (255, 255, 255))
-        #restart_button = font.render('R - Restart', True, (255, 255, 255))
-        #quit_button = font.render('Q - Quit', True, (255, 255, 255))
-        self._screen.blit(title, (WIDTH/2 - title.get_width()/2, HEIGHT/2 - title.get_height()/3))
-        #self._screen.blit(restart_button, (WIDTH/2 - restart_button.get_width()/2, HEIGHT/1.9 + restart_button.get_height()))
-        #self._screen.blit(quit_button, (WIDTH/2 - quit_button.get_width()/2, HEIGHT/2 + quit_button.get_height()/2))
+        game_over_text = font.render(f"Player {self._winner.get_player_id()} wins!", True, (255, 255, 255))
+        restart_text = font.render('R - Restart', True, (255, 255, 255))
+        self._screen.blit(game_over_text, (WIDTH/2 - game_over_text.get_width()/2, HEIGHT/2 - game_over_text.get_height()/3))
+        self._screen.blit(restart_text, (WIDTH/2 - restart_text.get_width()/2, HEIGHT/1.9 + restart_text.get_height()))
         pygame.display.update()

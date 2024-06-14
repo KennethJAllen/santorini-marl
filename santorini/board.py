@@ -34,7 +34,8 @@ class Board:
                         3: utils.load_image('level3.png'),
                         math.inf: utils.load_image('dome.png'),
                         'selected': utils.load_image('highlight_selected.png'),
-                        'move': utils.load_image('highlight_moves.png')}
+                        'move': utils.load_image('highlight_moves.png'),
+                        'build': utils.load_image('highlight_build.png')}
 
     def get_grid_size(self) -> int:
         """
@@ -247,10 +248,13 @@ class Board:
         return self._selected_position
 
     def set_selected_worker(self, position: tuple[int, int]) -> None:
-        """Selects the worker in the position. Unselects the worker if worker is already selected."""
+        """Selects the worker in the position.
+        Unselects the worker if worker is already selected."""
         worker = self.get_position_worker(position)
-        if worker:
-            self._selected_worker = self.get_position_worker(position)
+        if self._selected_worker == worker:
+            self._selected_worker = None
+        elif worker:
+            self._selected_worker = worker
 
     def get_selected_worker(self) -> tuple[int, int]:
         """Gets the current player's selected position."""
@@ -278,3 +282,8 @@ class Board:
         """Highlight potential move in the given position."""
         display_position = utils.convert_to_display_position(position)
         screen.blit(self._images['move'], display_position)
+
+    def display_build_hightlight(self, position, screen):
+        """Highlight potential move in the given position."""
+        display_position = utils.convert_to_display_position(position)
+        screen.blit(self._images['build'], display_position)

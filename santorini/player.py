@@ -90,6 +90,8 @@ class Player:
             self._piece_image = utils.load_image('player1.png')
         elif player_id == 2:
             self._piece_image =  utils.load_image('player2.png')
+        elif player_id == 3:
+            self._piece_image =  utils.load_image('player3.png')
         else:
             self._piece_image = None
 
