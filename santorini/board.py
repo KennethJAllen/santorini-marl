@@ -1,3 +1,4 @@
+"""Defines Board class."""
 from collections import defaultdict
 import math
 

@@ -1,4 +1,4 @@
-"""Game class containing game logic."""
+"""Defines Game class."""
 import pygame
 from santorini.board import Board
 from santorini.player import Player, Worker
