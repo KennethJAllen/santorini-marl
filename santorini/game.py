@@ -15,7 +15,7 @@ class Game:
         self._num_placed_workers = 0 # number of current player's placed workers. Used in setup
         self._moved_worker = None # tracks the worker moved
         self._game_state = 'setup' # either 'setup', 'playing', or 'game_over' depending on game state.
-        self._player_action_sate = 'start_turn' # either 'start_turn', 'move', 'build', or 'end_turn' depending on turn player's action state
+        self._player_action_sate = 'move' # either 'move', 'build', or 'end_turn' depending on turn player's action state
         self._winner = None # the winner of the game
 
     def select(self, position):
@@ -57,8 +57,6 @@ class Game:
 
         # main game loop
         elif self._game_state == 'playing':
-            if self._player_action_sate == 'start_turn':
-                self.start_turn()
             if self._player_action_sate == 'move':
                 self.move_action()
             if self._player_action_sate == 'build':
@@ -70,20 +68,6 @@ class Game:
             pass
         else:
             raise ValueError("Game state not one of 'setup', playing', or 'game_over'")
-
-    def start_turn(self):
-        """
-        Start the player's turn by ensuring there is at least one valid move.
-        If the current player cannot move, declare the other player the winner.
-        This only works for a 2 player implementation.
-        """
-        player = self._players[self._current_player_index]
-        if self._board.check_cannot_move_lose_condition(player):
-            winning_player_index = (self._current_player_index + 1) % len(self._players)
-            self._winner = self._players[winning_player_index]
-            self._game_state = 'game_over'
-        else:
-            self._player_action_sate = 'move'
 
     def move_action(self):
         """Moves the selected worker to the selected position."""
@@ -120,10 +104,16 @@ class Game:
     def end_turn(self):
         """Passes the turn to the next player."""
         num_players = len(self._players)
+        current_player = self._players[self._current_player_index]
         self._current_player_index = (self._current_player_index + 1) % num_players
         self._board.set_selected_worker(None)
         self._board.set_selected_position(None)
-        self._player_action_sate = 'start_turn'
+        self._player_action_sate = 'move'
+        # check that next player has a valid move
+        next_player = self._players[self._current_player_index]
+        if self._board.check_cannot_move_lose_condition(next_player):
+            self._winner = current_player
+            self._game_state = 'game_over'
 
     def update_valid_build_actions(self):
         """Updates the moved worker's valid build locations."""
