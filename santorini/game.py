@@ -15,7 +15,7 @@ class Game:
         self._num_placed_workers = 0 # number of current player's placed workers. Used in setup
         self._moved_worker = None # tracks the worker moved
         self._game_state = 'setup' # either 'setup', 'playing', or 'game_over' depending on game state.
-        self._player_action_sate = 'move' # either 'move', 'build', or 'end_turn' depending on turn player's action state
+        self._player_action_sate = 'start_turn' # either 'start_turn', 'move', 'build', or 'end_turn' depending on turn player's action state
         self._winner = None # the winner of the game
 
     def select(self, position):
@@ -57,6 +57,8 @@ class Game:
 
         # main game loop
         elif self._game_state == 'playing':
+            if self._player_action_sate == 'start_turn':
+                self.start_turn()
             if self._player_action_sate == 'move':
                 self.move_action()
             if self._player_action_sate == 'build':
@@ -68,6 +70,11 @@ class Game:
             pass
         else:
             raise ValueError("Game state not one of 'setup', playing', or 'game_over'")
+
+    def start_turn(self):
+        """Performs necessary steps at start of turn.
+        Primary purpose is to prevent visual bug with selecting workers when initializing the board."""
+        self._player_action_sate = 'move'
 
     def move_action(self):
         """Moves the selected worker to the selected position."""
