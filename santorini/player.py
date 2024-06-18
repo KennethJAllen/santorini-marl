@@ -79,8 +79,9 @@ class Worker:
 class Player:
     """Player class to manage player actions and workers."""
 
-    def __init__(self, player_id: int = None, workers: dict[int, Worker] = None):
+    def __init__(self, player_id: int = None, workers: dict[int, Worker] = None, ai: bool = False):
         self._player_id = player_id
+        self._ai = ai
         # set of workers
         if workers is None:
             self._workers = []

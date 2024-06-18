@@ -19,12 +19,13 @@ async def main():
 
         # Initialize board
         board = Board(grid_size = GRID_SIZE)
-        num_players = NUM_PLAYERS
 
         # Initialize players
         players = []
-        for player_id in range(1,num_players+1):
+        for player_id in range(1,NUM_PLAYERS+1):
             players.append(Player(player_id))
+        if NUM_PLAYERS == 1:
+            players.append(Player(2, ai = True))
 
         # Initialize the game with the board and players
         game = Game(players, board, screen)
