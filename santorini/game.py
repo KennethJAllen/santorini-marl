@@ -93,8 +93,8 @@ class Game:
             self._board.set_selected_position(None)
 
     def _start_turn(self):
-        """Performs necessary steps at start of turn.
-        Primary purpose is to prevent visual bug with selecting workers when initializing the board."""
+        """Starts turn. Primary purpose is to prevent visual 
+        bug with selecting workers when initializing the board."""
         self._player_action_sate = 'move'
 
     def _move_action(self):
