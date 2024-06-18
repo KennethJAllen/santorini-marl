@@ -63,17 +63,18 @@ class Worker:
 
     # display
 
-    def get_display_position(self) -> tuple[int,int]:
+    def draw_piece(self, screen):
+        """Display the piece on the screen."""
+        if self._player:
+            piece_image = self._player.get_piece_image()
+            screen.blit(piece_image, self._get_display_position())
+
+    def _get_display_position(self) -> tuple[int,int]:
         """Returns the center of the square corresponding to the worker on the display board."""
         x, y = self._position
         x_display = SQUARE_SIZE * x
         y_display = SQUARE_SIZE * y
         return x_display, y_display
-
-    def draw_piece(self, screen):
-        """Display the piece on the screen."""
-        piece_image = self._player.get_piece_image()
-        screen.blit(piece_image, self.get_display_position())
 
 class Player:
     """Player class to manage player actions and workers."""

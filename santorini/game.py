@@ -44,7 +44,7 @@ class Game:
             pass
         else:
             raise ValueError("Game state not one of 'setup', playing', or 'game_over'")
-
+        
     def get_game_state(self):
         """Returns the state of the game."""
         return self._game_state

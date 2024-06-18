@@ -1,5 +1,5 @@
 """Test configuration file containing pytest fixtures."""
-# pylint: disable=locally-disabled, multiple-statements, fixme, line-too-long, redefined-outer-name, missing-function-docstring
+# pylint: disable=locally-disabled, multiple-statements, fixme, line-too-long, redefined-outer-name, missing-function-docstring, protected-access
 
 import math
 from collections import defaultdict
@@ -68,5 +68,5 @@ def board_populated(worker_a1, worker_a2, worker_b1, worker_b2, worker_empty):
                               (4,3): [worker_empty, 3],
                               (1,0): [worker_empty, math.inf]})
     board = Board()
-    board.set_state(state_data)
+    board._set_state(state_data)
     return board
