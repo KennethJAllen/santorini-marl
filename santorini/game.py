@@ -2,7 +2,7 @@
 import pygame
 from santorini.board import Board
 from santorini.player import Player, Worker
-from santorini.config import NUM_WORKERS, WIDTH, HEIGHT
+from santorini.config import NUM_WORKERS, WIDTH, HEIGHT, NUM_PLAYERS, GRID_SIZE
 
 class Game:
     """Game logic, setup, and main loop."""
@@ -44,7 +44,10 @@ class Game:
             pass
         else:
             raise ValueError("Game state not one of 'setup', playing', or 'game_over'")
-        
+
+        # display
+        self.display_game()
+
     def get_game_state(self):
         """Returns the state of the game."""
         return self._game_state
@@ -188,4 +191,20 @@ class Game:
         restart_text = font.render('Press to restart', True, white)
         restart_position = (WIDTH/2 - restart_text.get_width()/2, HEIGHT/1.9 + restart_text.get_height())
         self._screen.blit(restart_text, restart_position)
-        pygame.display.update()
+
+def setup(screen) -> Game:
+    """Initializes the game for play"""
+    # Initialize board
+    board = Board(grid_size = GRID_SIZE)
+
+    # Initialize players
+    players = []
+    for player_id in range(1,NUM_PLAYERS+1):
+        players.append(Player(player_id))
+    if NUM_PLAYERS == 1:
+        players.append(Player(2, ai = True))
+
+    # Initialize the game with the board and players
+    game = Game(players, board, screen)
+    game.display_game()
+    return game

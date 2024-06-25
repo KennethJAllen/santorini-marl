@@ -2,45 +2,31 @@
 
 import asyncio
 import pygame
-from santorini.game import Game
-from santorini.board import Board
-from santorini.player import Player
+import santorini.game as gm
 from santorini import utils
-from santorini.config import WIDTH, HEIGHT, GRID_SIZE, FPS, NUM_PLAYERS, LEFT
+from santorini.config import WIDTH, HEIGHT, LEFT_CLICK
 
 async def main():
     """Entry point to start the game."""
+    # Initialize display
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption('Santorini')
+
     running = True
     while running:
-        # Initialize display
-        screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption('Santorini')
-        clock = pygame.time.Clock()
-
-        # Initialize board
-        board = Board(grid_size = GRID_SIZE)
-
-        # Initialize players
-        players = []
-        for player_id in range(1,NUM_PLAYERS+1):
-            players.append(Player(player_id))
-        if NUM_PLAYERS == 1:
-            players.append(Player(2, ai = True))
-
         # Initialize the game with the board and players
-        game = Game(players, board, screen)
-        game.display_game()
+        game = gm.setup(screen)
 
         # Start the game
         game_loop = True
         while game_loop:
-            clock.tick(FPS)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running, game_loop = False, False
 
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == LEFT:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == LEFT_CLICK:
                     if game.get_game_state() == 'game_over':
+                        display_position = pygame.mouse.get_pos()
                         game_loop = False
                     else:
                         display_position = pygame.mouse.get_pos()
@@ -48,7 +34,6 @@ async def main():
                         # Select the position and worker. Unselect worker if it is already selected.
                         game.select(position)
                         game.game_loop()
-                        game.display_game()
 
             await asyncio.sleep(0) # for pygbag to run in browser.
 
