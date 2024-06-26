@@ -45,9 +45,6 @@ class Game:
         else:
             raise ValueError("Game state not one of 'setup', playing', or 'game_over'")
 
-        # display
-        self.display_game()
-
     def get_game_state(self):
         """Returns the state of the game."""
         return self._game_state
@@ -68,6 +65,8 @@ class Game:
             if self._player_action_sate == 'build':
                 self._highlight_builds()
         pygame.display.update()
+
+    # private methods
 
     def _setup_board(self):
         """Prepare the game board for play (e.g., initialize players, place workers)."""
@@ -96,8 +95,7 @@ class Game:
             self._board.set_selected_position(None)
 
     def _start_turn(self):
-        """Starts turn. Primary purpose is to prevent visual 
-        bug with selecting workers when initializing the board."""
+        """Starts turn."""
         self._player_action_sate = 'move'
 
     def _move_action(self):
@@ -137,11 +135,12 @@ class Game:
         num_players = len(self._players)
         current_player = self._players[self._current_player_index]
         self._current_player_index = (self._current_player_index + 1) % num_players
-        self._board.set_selected_worker(None)
-        self._board.set_selected_position(None)
+        #self._board.set_selected_worker(None)
+        #self._board.set_selected_position(None)
         self._player_action_sate = 'start_turn'
         # check that next player has a valid move
         next_player = self._players[self._current_player_index]
+        self._board.reset_positions()
         if self._board.check_cannot_move_lose_condition(next_player):
             self._winner = current_player
             self._game_state = 'game_over'
@@ -209,5 +208,4 @@ def setup(screen) -> Game:
 
     # Initialize the game with the board and players
     game = Game(players, board, screen)
-    game.display_game()
     return game

@@ -31,7 +31,7 @@ async def main():
                     # Select the position and worker. Unselect worker if it is already selected.
                     game.select(position)
                     game.game_loop()
-
+        game.display_game()
         await asyncio.sleep(0) # for pygbag to run in browser.
 
 if __name__ == "__main__":

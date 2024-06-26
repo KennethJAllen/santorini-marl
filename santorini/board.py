@@ -129,7 +129,7 @@ class Board:
         """Returns True if a player has won, False otherwise."""
         return self._game_over
 
-    # display
+    # player selections
 
     def set_selected_position(self, position: tuple[int, int]) -> None:
         """Sets the current player's selected position."""
@@ -144,16 +144,26 @@ class Board:
 
     def set_selected_worker(self, position: tuple[int, int]) -> None:
         """Selects the worker in the position.
-        Unselects the worker if worker is already selected."""
-        worker = self._get_position_worker(position)
-        if self._selected_worker == worker:
+        Unselects the worker if worker is already selected.
+        Unselects the worker if the move is not valid."""
+        new_worker = self._get_position_worker(position)
+        current_worker = self._selected_worker
+        if current_worker == new_worker:
             self._selected_worker = None
-        elif worker:
-            self._selected_worker = worker
+        elif new_worker:
+            self._selected_worker = new_worker
+        elif current_worker and position not in current_worker.get_valid_moves():
+            self._selected_worker = None
 
     def get_selected_worker(self) -> tuple[int, int]:
         """Gets the current player's selected position."""
         return self._selected_worker
+
+    def reset_positions(self) -> None:
+        """Clears the player's selected position and worker."""
+        self._selected_position = None
+        self._selected_worker = None
+    # display
 
     def display_building(self, position, screen):
         """Prints the board state to the screen."""
