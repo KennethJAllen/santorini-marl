@@ -35,7 +35,7 @@ class Game:
                 self._start_turn()
             if self._player_action_sate == 'move':
                 self._move_action()
-            if self._player_action_sate == 'build':
+            elif self._player_action_sate == 'build':
                 self._build_action()
             if self._player_action_sate == 'end_turn':
                 self._end_turn()
@@ -139,7 +139,7 @@ class Game:
         self._current_player_index = (self._current_player_index + 1) % num_players
         self._board.set_selected_worker(None)
         self._board.set_selected_position(None)
-        self._player_action_sate = 'move'
+        self._player_action_sate = 'start_turn'
         # check that next player has a valid move
         next_player = self._players[self._current_player_index]
         if self._board.check_cannot_move_lose_condition(next_player):
@@ -180,13 +180,16 @@ class Game:
         # colors
         black = (0, 0, 0)
         white = (255, 255, 255)
+        # black background
         self._screen.fill(black)
+
         pygame.font.init()
         font = pygame.font.SysFont('arial', 40)
         # game over text
         game_over_text = font.render(f"Player {self._winner.get_player_id()} wins!", True, white)
         game_over_position = (WIDTH/2 - game_over_text.get_width()/2, HEIGHT/2 - game_over_text.get_height()/3)
         self._screen.blit(game_over_text, game_over_position)
+
         # restart text
         restart_text = font.render('Press to restart', True, white)
         restart_position = (WIDTH/2 - restart_text.get_width()/2, HEIGHT/1.9 + restart_text.get_height())
