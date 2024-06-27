@@ -30,7 +30,6 @@ class Worker:
         if not isinstance(other, Worker):
             # don't attempt to compare against unrelated types
             return NotImplemented
-
         return self._player is other._player and self._worker_id == other._worker_id
 
     def get_player(self) -> Player:

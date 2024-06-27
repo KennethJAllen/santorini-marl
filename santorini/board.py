@@ -4,11 +4,12 @@ import math
 
 from santorini.player import Worker, Player
 from santorini import utils
+from santorini.config import GRID_SIZE, MAX_BUILDING_HEIGHT
 
 class Board:
     """Board class to handle the game board, buildings, board state, and displaying the board."""
 
-    def __init__(self, grid_size: int = 5, max_building_height: int = 3):
+    def __init__(self, grid_size: int = GRID_SIZE, max_building_height: int = MAX_BUILDING_HEIGHT):
         """
         Initializes the game board.
 

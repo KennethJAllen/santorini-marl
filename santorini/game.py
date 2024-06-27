@@ -3,42 +3,36 @@ import pygame
 from santorini.board import Board
 from santorini.player import Player, Worker
 from santorini import utils
-from santorini.config import NUM_WORKERS, WIDTH, HEIGHT, GRID_SIZE
+from santorini.config import NUM_WORKERS, WIDTH, HEIGHT, BLACK
 
 class Game:
     """Game logic, setup, and main loop."""
 
-    def __init__(self, players: list[Player], board: Board, screen):
-        self._board = board  # The game board, an instance of the Board class
-        self._players = players # List of Player objects participating in the game
-        self._screen = screen
+    def __init__(self, screen):
+        self._screen = screen # The display screen
+        self._board = Board()  # The game board, an instance of the Board class
+        self._players = None # List of Player objects participating in the game
         self._current_player_index = 0  # Index to keep track of whose turn it is
         self._num_placed_workers = 0 # number of current player's placed workers. Used in setup
         self._moved_worker = None # tracks the worker moved
-        self._game_state = 'setup' # The game state.
+        self._game_state = 'player_select' # The game state.
         self._player_action_sate = 'start_turn' # either 'start_turn', 'move', 'build', or 'end_turn' depending on turn player's action state
         self._winner = None # the winner of the game
-
-    def select(self, display_position):
-        """Update the selected location and worker."""
-        position = utils.convert_to_position(display_position)
-        self._board.set_selected_position(position)
-        self._board.set_selected_worker(position)
 
     def game_loop(self, display_position: tuple[int,int]):
         """Main game loop."""
         # choose number of players
-        if self._game_state == 'start_screen':
-            self._display_start_screen()
+        if self._game_state == 'player_select':
+            self._player_select(display_position)
             
         # initial setup
         elif self._game_state == 'setup':
-            self.select(display_position)
+            self._select(display_position)
             self._setup_board()
 
         # main game loop
         elif self._game_state == 'playing':
-            self.select(display_position)
+            self._select(display_position)
             if self._player_action_sate == 'start_turn':
                 self._start_turn()
             if self._player_action_sate == 'move':
@@ -49,15 +43,11 @@ class Game:
                 self._end_turn()
         # end game
         elif self._game_state == 'game_over':
-            self.setup()
+            self._setup()
 
-    def get_game_state(self):
-        """Returns the state of the game."""
-        return self._game_state
-
-    def setup(self):
+    def _setup(self):
         """Sets the board back to blank."""
-        self._board = Board(grid_size = GRID_SIZE)
+        self._board = Board()
         self._current_player_index = 0  # Index to keep track of whose turn it is
         self._num_placed_workers = 0 # number of current player's placed workers. Used in setup
         self._moved_worker = None # tracks the worker moved
@@ -69,13 +59,39 @@ class Game:
         """Displays the current board state."""
         if self._game_state == 'game_over':
             self._display_game_over_screen()
-        elif self._game_state == 'start_screen':
+        elif self._game_state == 'player_select':
             self._display_start_screen()
         else:
             self._display_board()
         pygame.display.update()
 
-    # private methods
+    # game state methods
+
+    def _select(self, display_position):
+        """Update the selected location and worker."""
+        position = utils.convert_to_position(display_position)
+        self._board.set_selected_position(position)
+        self._board.set_selected_worker(position)
+
+    def _player_select(self, display_position: tuple[int,int]):
+        """Choose the number of players in the game."""
+        x_position = display_position[0]
+        if x_position <= WIDTH//3:
+            num_players = 1
+        elif x_position <= 2*WIDTH//3:
+            num_players = 2
+        else:
+            num_players = 3
+        self._init_players(num_players)
+        self._game_state = 'setup'
+
+    def _init_players(self, num_players):
+        """Initializes the players in the game."""
+        self._players = []
+        for player_id in range(1,num_players+1):
+            self._players.append(Player(player_id))
+        # if num_players == 1:
+        #     self._players.append(Player(2, ai = True))
 
     def _setup_board(self):
         """Prepare the game board for play (e.g., initialize players, place workers)."""
@@ -198,40 +214,31 @@ class Game:
 
     def _display_game_over_screen(self):
         """Displays the game over screen."""
-        # colors
-        black = (0, 0, 0)
-        white = (255, 255, 255)
         # black background
-        self._screen.fill(black)
+        self._screen.fill(BLACK)
 
-        pygame.font.init()
-        font = pygame.font.SysFont('arial', 40)
         # game over text
-        game_over_text = font.render(f"Player {self._winner.get_player_id()} wins!", True, white)
-        game_over_position = (WIDTH/2 - game_over_text.get_width()/2, HEIGHT/2 - game_over_text.get_height()/3)
-        self._screen.blit(game_over_text, game_over_position)
+        game_over_text = f"Player {self._winner.get_player_id()} wins!"
+        game_over_position = (WIDTH//2, HEIGHT//3)
+        utils.display_text(game_over_text, game_over_position, self._screen)
 
         # restart text
-        restart_text = font.render('Press to restart', True, white)
-        restart_position = (WIDTH/2 - restart_text.get_width()/2, HEIGHT/1.9 + restart_text.get_height())
-        self._screen.blit(restart_text, restart_position)
+        restart_position = (WIDTH//2, 2*HEIGHT//3)
+        utils.display_text('Press to restart', restart_position, self._screen)
 
     def _display_start_screen(self):
         """Displays the game over screen."""
-        # colors
-        black = (0, 0, 0)
-        white = (255, 255, 255)
         # black background
-        self._screen.fill(black)
+        self._screen.fill(BLACK)
 
-        pygame.font.init()
-        font = pygame.font.SysFont('arial', 40)
         # game over text
-        choose_players_text = font.render("Choose number of players.", True, white)
-        choose_players_position = (WIDTH/2 - choose_players_text.get_width()/2, HEIGHT/2 - choose_players_text.get_height()/3)
-        self._screen.blit(choose_players_text, choose_players_position)
+        choose_players_position = (WIDTH//2, HEIGHT//4)
+        utils.display_text('Choose # Players', choose_players_position, self._screen)
 
-        # choose p1 test
-        p1_text = font.render('1', True, white)
-        p1_position = (WIDTH/2 - p1_text.get_width()/2, HEIGHT/1.9 + p1_text.get_height())
-        self._screen.blit(p1_text, p1_position)
+        # num players text
+        one_position = (WIDTH//6, HEIGHT//2)
+        two_position = (WIDTH//2, HEIGHT//2)
+        three_position = (5*WIDTH//6, HEIGHT//2)
+        utils.display_text('1', one_position, self._screen)
+        utils.display_text('2', two_position, self._screen)
+        utils.display_text('3', three_position, self._screen)

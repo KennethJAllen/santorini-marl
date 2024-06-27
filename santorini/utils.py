@@ -1,7 +1,7 @@
 """Utility functions"""
 import os
 import pygame
-from santorini.config import SQUARE_SIZE
+from santorini.config import SQUARE_SIZE, WHITE
 
 def is_adjacent(position1: tuple[int, int], position2: tuple[int, int]) -> bool:
     """
@@ -40,3 +40,11 @@ def load_image(filename):
     path = os.path.join('santorini/assets', filename)
     image = pygame.image.load(path)
     return image
+
+def display_text(text: str, position: tuple[int,int], screen):
+    """Displays the text on the screen, centered at given position."""
+    font = pygame.font.SysFont('arial', 40)
+    rendered_text = font.render(text, True, WHITE)
+    x_position, y_position = position
+    adjusted_position = (x_position - rendered_text.get_width()//2, y_position - rendered_text.get_height()//2)
+    screen.blit(rendered_text, adjusted_position)
