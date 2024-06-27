@@ -2,7 +2,8 @@
 import pygame
 from santorini.board import Board
 from santorini.player import Player, Worker
-from santorini.config import NUM_WORKERS, WIDTH, HEIGHT, NUM_PLAYERS, GRID_SIZE
+from santorini import utils
+from santorini.config import NUM_WORKERS, WIDTH, HEIGHT, GRID_SIZE
 
 class Game:
     """Game logic, setup, and main loop."""
@@ -18,24 +19,26 @@ class Game:
         self._player_action_sate = 'start_turn' # either 'start_turn', 'move', 'build', or 'end_turn' depending on turn player's action state
         self._winner = None # the winner of the game
 
-    def select(self, position):
+    def select(self, display_position):
         """Update the selected location and worker."""
+        position = utils.convert_to_position(display_position)
         self._board.set_selected_position(position)
         self._board.set_selected_worker(position)
 
-    def game_loop(self, position: tuple[int,int]):
+    def game_loop(self, display_position: tuple[int,int]):
         """Main game loop."""
-        # initial setup
+        # choose number of players
         if self._game_state == 'start_screen':
             self._display_start_screen()
-
+            
+        # initial setup
         elif self._game_state == 'setup':
-            self.select(position)
+            self.select(display_position)
             self._setup_board()
 
         # main game loop
         elif self._game_state == 'playing':
-            self.select(position)
+            self.select(display_position)
             if self._player_action_sate == 'start_turn':
                 self._start_turn()
             if self._player_action_sate == 'move':
@@ -66,40 +69,13 @@ class Game:
         """Displays the current board state."""
         if self._game_state == 'game_over':
             self._display_game_over_screen()
+        elif self._game_state == 'start_screen':
+            self._display_start_screen()
         else:
-            grid_size = self._board.get_grid_size()
-            for row_index in range(grid_size):
-                for col_index in range(grid_size):
-                    position = (row_index, col_index)
-                    self._board.display_building(position, self._screen)
-                    self._board.display_worker(position, self._screen)
-            if self._player_action_sate == 'move':
-                self._highlight_moves()
-            if self._player_action_sate == 'build':
-                self._highlight_builds()
+            self._display_board()
         pygame.display.update()
 
     # private methods
-
-    def _display_start_screen(self):
-        """Displays the game over screen."""
-        # colors
-        black = (0, 0, 0)
-        white = (255, 255, 255)
-        # black background
-        self._screen.fill(black)
-
-        pygame.font.init()
-        font = pygame.font.SysFont('arial', 40)
-        # game over text
-        choose_players_text = font.render("Choose number of players.", True, white)
-        choose_players_position = (WIDTH/2 - choose_players_text.get_width()/2, HEIGHT/2 - choose_players_text.get_height()/3)
-        self._screen.blit(choose_players_text, choose_players_position)
-
-        # choose p1 test
-        p1_text = font.render('1', True, white)
-        p1_position = (WIDTH/2 - p1_text.get_width()/2, HEIGHT/1.9 + p1_text.get_height())
-        self._screen.blit(p1_text, p1_position)
 
     def _setup_board(self):
         """Prepare the game board for play (e.g., initialize players, place workers)."""
@@ -207,6 +183,19 @@ class Game:
         for build_location in worker.get_valid_builds():
             self._board.display_build_hightlight(build_location, self._screen)
 
+    def _display_board(self):
+        """Displays the game board"""
+        grid_size = self._board.get_grid_size()
+        for row_index in range(grid_size):
+            for col_index in range(grid_size):
+                position = (row_index, col_index)
+                self._board.display_building(position, self._screen)
+                self._board.display_worker(position, self._screen)
+        if self._player_action_sate == 'move':
+            self._highlight_moves()
+        if self._player_action_sate == 'build':
+            self._highlight_builds()
+
     def _display_game_over_screen(self):
         """Displays the game over screen."""
         # colors
@@ -227,19 +216,22 @@ class Game:
         restart_position = (WIDTH/2 - restart_text.get_width()/2, HEIGHT/1.9 + restart_text.get_height())
         self._screen.blit(restart_text, restart_position)
 
-def setup(screen) -> Game:
-    """Initializes the game for play"""
-    # Initialize board
-    board = Board(grid_size = GRID_SIZE)
+    def _display_start_screen(self):
+        """Displays the game over screen."""
+        # colors
+        black = (0, 0, 0)
+        white = (255, 255, 255)
+        # black background
+        self._screen.fill(black)
 
-    # Initialize players
-    players = []
-    for player_id in range(1,NUM_PLAYERS+1):
-        players.append(Player(player_id))
-    if NUM_PLAYERS == 1:
-        players.append(Player(2, ai = True))
+        pygame.font.init()
+        font = pygame.font.SysFont('arial', 40)
+        # game over text
+        choose_players_text = font.render("Choose number of players.", True, white)
+        choose_players_position = (WIDTH/2 - choose_players_text.get_width()/2, HEIGHT/2 - choose_players_text.get_height()/3)
+        self._screen.blit(choose_players_text, choose_players_position)
 
-    # Initialize the game with the board and players
-    game = Game(players, board, screen)
-    game.display_game()
-    return game
+        # choose p1 test
+        p1_text = font.render('1', True, white)
+        p1_position = (WIDTH/2 - p1_text.get_width()/2, HEIGHT/1.9 + p1_text.get_height())
+        self._screen.blit(p1_text, p1_position)
