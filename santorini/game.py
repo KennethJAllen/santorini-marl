@@ -14,7 +14,7 @@ class Game:
         self._current_player_index = 0  # Index to keep track of whose turn it is
         self._num_placed_workers = 0 # number of current player's placed workers. Used in setup
         self._moved_worker = None # tracks the worker moved
-        self._game_state = 'setup' # either 'setup', 'playing', or 'game_over' depending on game state.
+        self._game_state = 'setup' # The game state.
         self._player_action_sate = 'start_turn' # either 'start_turn', 'move', 'build', or 'end_turn' depending on turn player's action state
         self._winner = None # the winner of the game
 
@@ -23,14 +23,19 @@ class Game:
         self._board.set_selected_position(position)
         self._board.set_selected_worker(position)
 
-    def game_loop(self):
+    def game_loop(self, position: tuple[int,int]):
         """Main game loop."""
         # initial setup
-        if self._game_state == 'setup':
+        if self._game_state == 'start_screen':
+            self._display_start_screen()
+
+        elif self._game_state == 'setup':
+            self.select(position)
             self._setup_board()
 
         # main game loop
         elif self._game_state == 'playing':
+            self.select(position)
             if self._player_action_sate == 'start_turn':
                 self._start_turn()
             if self._player_action_sate == 'move':
@@ -41,13 +46,21 @@ class Game:
                 self._end_turn()
         # end game
         elif self._game_state == 'game_over':
-            pass
-        else:
-            raise ValueError("Game state not one of 'setup', playing', or 'game_over'")
+            self.setup()
 
     def get_game_state(self):
         """Returns the state of the game."""
         return self._game_state
+
+    def setup(self):
+        """Sets the board back to blank."""
+        self._board = Board(grid_size = GRID_SIZE)
+        self._current_player_index = 0  # Index to keep track of whose turn it is
+        self._num_placed_workers = 0 # number of current player's placed workers. Used in setup
+        self._moved_worker = None # tracks the worker moved
+        self._game_state = 'setup' # The game state.
+        self._player_action_sate = 'start_turn' # either 'start_turn', 'move', 'build', or 'end_turn' depending on turn player's action state
+        self._winner = None # the winner of the game
 
     def display_game(self):
         """Displays the current board state."""
@@ -67,6 +80,26 @@ class Game:
         pygame.display.update()
 
     # private methods
+
+    def _display_start_screen(self):
+        """Displays the game over screen."""
+        # colors
+        black = (0, 0, 0)
+        white = (255, 255, 255)
+        # black background
+        self._screen.fill(black)
+
+        pygame.font.init()
+        font = pygame.font.SysFont('arial', 40)
+        # game over text
+        choose_players_text = font.render("Choose number of players.", True, white)
+        choose_players_position = (WIDTH/2 - choose_players_text.get_width()/2, HEIGHT/2 - choose_players_text.get_height()/3)
+        self._screen.blit(choose_players_text, choose_players_position)
+
+        # choose p1 test
+        p1_text = font.render('1', True, white)
+        p1_position = (WIDTH/2 - p1_text.get_width()/2, HEIGHT/1.9 + p1_text.get_height())
+        self._screen.blit(p1_text, p1_position)
 
     def _setup_board(self):
         """Prepare the game board for play (e.g., initialize players, place workers)."""
@@ -208,4 +241,5 @@ def setup(screen) -> Game:
 
     # Initialize the game with the board and players
     game = Game(players, board, screen)
+    game.display_game()
     return game

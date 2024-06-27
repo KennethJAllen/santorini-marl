@@ -23,15 +23,11 @@ async def main():
                 running = False
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == LEFT_CLICK:
-                if game.get_game_state() == 'game_over':
-                    game = gm.setup(screen)
-                else:
-                    display_position = pygame.mouse.get_pos()
-                    position = utils.convert_to_position(display_position)
-                    # Select the position and worker. Unselect worker if it is already selected.
-                    game.select(position)
-                    game.game_loop()
-        game.display_game()
+                display_position = pygame.mouse.get_pos()
+                position = utils.convert_to_position(display_position)
+                # Select the position and worker. Unselect worker if it is already selected.
+                game.game_loop(position)
+                game.display_game()
         await asyncio.sleep(0) # for pygbag to run in browser.
 
 if __name__ == "__main__":
