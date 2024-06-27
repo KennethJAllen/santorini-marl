@@ -9,7 +9,7 @@ MAX_BUILDING_HEIGHT = 3 # Maximum height a building can reach before being cappe
 SQUARE_SIZE = WIDTH // GRID_SIZE # the size of each square in pixels
 
 # game parameters
-NUM_WORKERS = 2
+NUM_WORKERS = 2 #number of workers each player has
 
 # colors
 BLACK = (0, 0, 0)

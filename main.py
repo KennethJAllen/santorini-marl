@@ -12,7 +12,7 @@ async def main():
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption('Santorini')
 
-    # Initialize the game with the board and players
+    # Initialize the game
     game = Game(screen)
     game.display_game()
 
