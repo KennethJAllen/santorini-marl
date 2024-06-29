@@ -9,7 +9,7 @@ from santorini.config import GRID_SIZE, MAX_BUILDING_HEIGHT
 class Board:
     """Board class to handle the game board, buildings, board state, and displaying the board."""
 
-    def __init__(self, grid_size: int = GRID_SIZE, max_building_height: int = MAX_BUILDING_HEIGHT):
+    def __init__(self):
         """
         Initializes the game board.
 
@@ -18,8 +18,8 @@ class Board:
         _game_over: Flag if the game is over. Default False.
         _select: The space the current player has selected.
         """
-        self._grid_size = int(grid_size)
-        self._max_building_height = int(max_building_height)
+        self._grid_size = GRID_SIZE
+        self._max_building_height = MAX_BUILDING_HEIGHT
         self._game_over = False
         self._selected_position = None
         self._selected_worker = None

@@ -155,8 +155,9 @@ class Game:
         self._players = []
         for player_id in range(1,num_players+1):
             self._players.append(Player(player_id))
-        # if num_players == 1:
-        #     self._players.append(Player(2, ai = True))
+        # if single player mode, add an AI player
+        if num_players == 1:
+            self._players.append(Player(2, ai = True))
 
     def _select(self, display_position):
         """Update the selected location and worker."""
@@ -195,7 +196,6 @@ class Game:
             # highlight moves
             for move_location in worker.get_valid_moves():
                 self._board.display_move_hightlight(move_location, self._screen)
-
 
     def _highlight_builds(self):
         """Displays potential spaces the moved worker can build on."""
