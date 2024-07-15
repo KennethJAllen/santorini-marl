@@ -17,6 +17,8 @@ When a player's piece reaches the third level, that player wins. If a player can
 
 To play in the browser, visit https://www.kennethallenmath.com/santorini/.
 
+Note: If autoplay is blocked, a refresh might be required.
+
 ### Using `main.py`
 
 To play the game, execute the script `main.py`.
