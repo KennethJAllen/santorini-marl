@@ -1,6 +1,6 @@
 # Santorini
 
-[Santorini]([https://boardgamegeek.com/boardgame/194655/santorini](https://en.wikipedia.org/wiki/Santorini_(game))), is an abstract board game, first [published in 2004](https://boardgamegeek.com/boardgame/9963/santorini). It is a two to three player game that is typically played on a $5 \times 5$ grid.
+[Santorini](https://en.wikipedia.org/wiki/Santorini_(game)), is an abstract board game, first [published in 2004](https://boardgamegeek.com/boardgame/9963/santorini). It is a two to three player game that is typically played on a $5 \times 5$ grid.
 
 ![Santorini being played](/images/santorini.png)
 
