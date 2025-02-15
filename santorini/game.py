@@ -1,5 +1,6 @@
 """Defines Game class."""
 import pygame
+import gymnasium as gym
 from santorini.board import Board
 from santorini.player import Player, Worker
 from santorini import utils
