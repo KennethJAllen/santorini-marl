@@ -1,5 +1,5 @@
 """Test configuration file containing pytest fixtures."""
-# pylint: disable=locally-disabled, multiple-statements, missing-function-docstring, protected-access
+# pylint: disable=protected-access
 
 from collections import defaultdict
 import pytest
