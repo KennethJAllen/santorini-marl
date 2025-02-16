@@ -1,7 +1,6 @@
 """Tests for the Board class."""
 # pylint: disable=locally-disabled, multiple-statements, fixme, line-too-long, redefined-outer-name, missing-function-docstring, protected-access
 
-import math
 import pytest
 
 def test_grid_size(board_populated):
@@ -34,7 +33,7 @@ def test_set_position_worker(board_empty, worker_a1):
         ((0,0), 0),  # position (0,0), expect height 0
         ((2,4), 0),  # position (2,4), expect height 0
         ((4,3), 3),  # position (4,3), expect height 3
-        ((1,0), math.inf),  # position (1,0), expect height math.inf
+        ((1,0), 4),  # position (1,0), expect height 4
     ]
 )
 def test_get_position_height(board_populated, position, expected_height):
@@ -52,7 +51,7 @@ def test_set_position_height_finite(board_empty):
 
 def test_set_position_height_inf(board_empty):
     position = (2,4)
-    expected_height = math.inf
+    expected_height = 4
     board_empty._set_position_height(position, expected_height)
     height = board_empty._get_position_height(position)
     assert expected_height == height
@@ -146,7 +145,7 @@ def test_can_build_position_with_worker(board_populated):
 
 def test_can_build_max_height_reached(board_populated):
     worker_position = (0, 0)
-    build_position = (1, 0)  # Max height (math.inf)
+    build_position = (1, 0)  # Max height (4)
     assert board_populated._can_build(worker_position, build_position) is False
 
 def test_can_build_off_board_position(board_populated):
@@ -181,7 +180,7 @@ def test_build_failure_dome_present(board_populated):
     worker_position = (1, 0)
     build_position = (1, 0)
 
-    # Trying to build on a dome, where height is math.inf
+    # Trying to build on a dome, where height is 4
     with pytest.raises(ValueError) as excinfo:
         board_populated.build(worker_position, build_position)
     assert "That is not a valid build position." in str(excinfo.value)

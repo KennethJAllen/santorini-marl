@@ -1,10 +1,8 @@
 """Defines Board class."""
 from collections import defaultdict
-import math
-
 from santorini.player import Worker, Player
 from santorini import utils
-from santorini.config import GRID_SIZE, MAX_BUILDING_HEIGHT
+from santorini.config import GRID_SIZE
 
 class Board:
     """Board class to handle the game board, buildings, board state, and displaying the board."""
@@ -19,7 +17,7 @@ class Board:
         _select: The space the current player has selected.
         """
         self._grid_size = GRID_SIZE
-        self._max_building_height = MAX_BUILDING_HEIGHT
+        self._max_building_height = 3
         self._game_over = False
         self._selected_position = None
         self._selected_worker = None
@@ -34,7 +32,7 @@ class Board:
                         1: utils.load_image('level1.png'),
                         2: utils.load_image('level2.png'),
                         3: utils.load_image('level3.png'),
-                        math.inf: utils.load_image('dome.png'),
+                        4: utils.load_image('dome.png'),
                         'selected': utils.load_image('highlight_selected.png'),
                         'move': utils.load_image('highlight_moves.png'),
                         'build': utils.load_image('highlight_build.png')}
@@ -74,7 +72,7 @@ class Board:
             self._set_position_height(build_position, position_height + 1)
         # cap if height is max
         else:
-            self._set_position_height(build_position, math.inf)
+            self._set_position_height(build_position, self._max_building_height + 1)
 
     def can_place(self, position: tuple[int, int]) -> bool:
         """Check if placing worker on position is valid."""
@@ -207,7 +205,7 @@ class Board:
 
     def _get_position_height(self, position: tuple[int, int]) -> int:
         """Returns the building height at the given position.
-        If the position is capped, returns math.inf."""
+        If the position is capped, returns max height + 1."""
         return self._state[position][1]
 
     def _set_position_height(self, position: tuple[int, int], height: int) -> None:
@@ -274,7 +272,7 @@ class Board:
 
         # Check if building height has reached a dome
         position_height = self._get_position_height(build_position)
-        if position_height == math.inf:
+        if position_height == self._max_building_height + 1:
             return False
 
         # Check if worker is on position
