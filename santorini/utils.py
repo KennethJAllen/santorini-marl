@@ -1,7 +1,7 @@
 """Utility functions"""
 import os
 import pygame
-from santorini.config import SQUARE_SIZE, WHITE
+from santorini.config import GRID_SIZE, SQUARE_SIZE, WHITE
 
 def is_adjacent(position1: tuple[int, int], position2: tuple[int, int]) -> bool:
     """
@@ -15,13 +15,27 @@ def is_adjacent(position1: tuple[int, int], position2: tuple[int, int]) -> bool:
         return False
     return True
 
-def algebraic_position_to_indices(algebraic_position: str) -> tuple[int, int]:
-    """Converts algebraic notation e.g. B3 to index notation (1, 2)"""
-    if not len(algebraic_position) >= 2 or not algebraic_position[0].isalpha() or not algebraic_position[1:].isdigit():
-        raise ValueError("The position must be two characters, a letter followed by a number. For example, A1.")
-    first_position = int(algebraic_position[1:]) - 1 # Converts 1 to 0, 2 to 1, etc.
-    second_position = ord(algebraic_position[0]) - 65 # Converts A to 0, B to 1, etc.
-    return first_position, second_position
+def space_index_to_position(space_index: int, grid_size: int = GRID_SIZE) -> tuple[int, int]:
+    """
+    Given an integer index for the space on the board,
+    each from 0 to GRID_SIZE squared (typically 25),
+    return the tuple representing the positon.
+    Inverse function of space_position_to_index.
+    """
+    space_row = space_index // grid_size
+    space_col = space_index % grid_size
+    return space_row, space_col
+
+def space_position_to_index(space_position: tuple[int, int], grid_size: int = GRID_SIZE) -> int:
+    """
+    Given a tuple of integers representing a position of a space on the board,
+    each from 0 to GRID_SIZE, (typically 5),
+    return the integer index of the space.
+    Inverse function of space_index_to_position.
+    """
+    space_row, space_col = space_position
+    space_index = space_row * grid_size + space_col
+    return space_index
 
 # display
 
