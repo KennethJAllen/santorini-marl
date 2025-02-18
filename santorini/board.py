@@ -100,18 +100,22 @@ class Board:
         If the worker moves to the given position,
         returns a list of valid positions for the worker to build.
         """
+        valid_positions = []
+        # If the move would result in a win, can "build" anywhere
+        if self.get_position_height(position) == MAX_BUILDING_HEIGHT:
+            for row in range(GRID_SIZE):
+                for col in range(GRID_SIZE):
+                    target_position = (row, col)
+                    valid_positions.append(target_position)
+            return valid_positions
+
         x, y = position
         # check all adjacent positions for valid builds
-        valid_positions = []
         for i in range(-1,2):
             for j in range(-1,2):
                 target_position = x + i, y + j
                 # Must build on board
                 if not self._is_on_board(position):
-                    continue
-                # If the move would result in a win, can "build" anywhere
-                if self.get_position_height(position) == MAX_BUILDING_HEIGHT:
-                    valid_positions.append(target_position)
                     continue
                 # Can't build on current position
                 if target_position == position:
