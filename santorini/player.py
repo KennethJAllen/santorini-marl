@@ -30,9 +30,11 @@ class Worker:
         return self._player is other._player and self._id == other._id
 
     def __repr__(self):
+        """Show the player and worker ID
+        e.g. "P1W0-H1" => "Player 1's Worker 0"""
         if self._player is None or self._id is None:
-            return "---"
-        return f"{self._player.get_id()}:{self._id}"
+            return ""
+        return f"P{self._player.get_id()}W{self._id}"
 
     def get_id(self) -> int:
         """Returns the id of the worker."""
@@ -72,6 +74,11 @@ class Player:
 
     def __bool__(self):
         return False if self._id is None else True
+
+    def __repr__(self):
+        if self._id is None:
+            return ""
+        return f"Player {self._id}"
 
     def get_id(self):
         """Reutnrs the id corresponding to the player."""

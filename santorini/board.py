@@ -57,7 +57,7 @@ class Board:
         if not self._is_on_board(position):
             return False
         # Check worker is on position
-        if self._get_position_worker(position):
+        if self.get_position_worker(position):
             return False
         return True
 
@@ -75,7 +75,7 @@ class Board:
         worker_position = worker.get_position()
         valid_moves = self._get_valid_moves_from_position(worker_position)
         for move_position in valid_moves:
-            for build in self._worker_move_then_build_positions(worker, move_position):
+            for build in self._valid_move_then_build_positions(worker, move_position):
                 move_index = utils.space_position_to_index(move_position)
                 build_index = utils.space_position_to_index(build)
                 valid_actions.add((worker.get_id(), move_index, build_index))
@@ -95,7 +95,7 @@ class Board:
                     valid_moves.append(target_position)
         return valid_moves
 
-    def _worker_move_then_build_positions(self, worker: Worker, position: tuple[int, int]) -> list[tuple[int,int]]:
+    def _valid_move_then_build_positions(self, worker: Worker, position: tuple[int, int]) -> list[tuple[int,int]]:
         """
         If the worker moves to the given position,
         returns a list of valid positions for the worker to build.
@@ -106,15 +106,22 @@ class Board:
         for i in range(-1,2):
             for j in range(-1,2):
                 target_position = x + i, y + j
+                # Must build on board
+                if not self._is_on_board(position):
+                    continue
+                # If the move would result in a win, can "build" anywhere
+                if self.get_position_height(position) == MAX_BUILDING_HEIGHT:
+                    valid_positions.append(target_position)
+                    continue
                 # Can't build on current position
                 if target_position == position:
                     continue
                 # Check if target position is capped
-                position_height = self._get_position_height(target_position)
+                position_height = self.get_position_height(target_position)
                 if position_height == self._max_building_height + 1:
                     continue
                 # Check if there is a different worker on the target position
-                target_position_worker = self._get_position_worker(target_position)
+                target_position_worker = self.get_position_worker(target_position)
                 if target_position_worker and not (target_position_worker is worker):
                     continue
                 valid_positions.append(target_position)
@@ -124,14 +131,7 @@ class Board:
         """Returns True if a player has won, False otherwise."""
         return self._game_over
 
-    def print_state(self):
-        """Prints a terminal friendly board state."""
-        for i in range(self._grid_size):
-            for j in range(self._grid_size):
-                print(self._state[(i,j)])
-            print("\n")
-
-    def _get_position_worker(self, position: tuple[int, int]) -> Worker:
+    def get_position_worker(self, position: tuple[int, int]) -> Worker:
         """Returns the worker in the given position."""
         return self._state[position][0]
 
@@ -140,7 +140,7 @@ class Board:
         self._state[position][0] = worker
         worker.set_positon(position)
 
-    def _get_position_height(self, position: tuple[int, int]) -> int:
+    def get_position_height(self, position: tuple[int, int]) -> int:
         """Returns the building height at the given position.
         If the position is capped, returns max height + 1."""
         return self._state[position][1]
@@ -169,15 +169,15 @@ class Board:
         if not utils.is_adjacent(worker_position, target_position):
             return False
 
-        current_worker = self._get_position_worker(worker_position)
-        target_worker = self._get_position_worker(target_position)
+        current_worker = self.get_position_worker(worker_position)
+        target_worker = self.get_position_worker(target_position)
         if not current_worker or target_worker:
             # check there is not a worker on the target_position,
             # and there is a worker on the worker_position
             return False
 
-        current_height = self._get_position_height(worker_position)
-        target_height = self._get_position_height(target_position)
+        current_height = self.get_position_height(worker_position)
+        target_height = self.get_position_height(target_position)
         if target_height > current_height + 1:
             # check target_height is at most 1 more than current_height
             return False
@@ -190,7 +190,7 @@ class Board:
         target_position: A tuple (x, y) indicating the position to check.
         return: True if the position is on the third level, False otherwise.
         """
-        if self._get_position_height(position) == self._max_building_height:
+        if self.get_position_height(position) == self._max_building_height:
             self._game_over = True
 
     def _is_on_board(self, position: tuple[int, int]) -> bool:
@@ -206,3 +206,36 @@ class Board:
         This is used for testing.
         """
         self._state = state_data
+
+def print_board(board: Board) -> None:
+    """Prints the board with column headers, row labels,
+    and column-aligned cells showing worker or height."""
+
+    # Print top column indices
+    print("    ", end="")  # Leading spaces for alignment
+    for col in range(GRID_SIZE):
+        print(f"{col:^7}", end="")  # Center each column header in 7 chars
+    print()
+
+    for row in range(GRID_SIZE):
+        # Print row index on the left
+        print(f"{row:<3}", end="")  # Left-align row index in 3 chars
+
+        for col in range(GRID_SIZE):
+            position = (row, col)
+            worker = board.get_position_worker(position)
+            height = board.get_position_height(position)
+
+            # Convert height to a string. Represent capped space with "∞".
+            height_str = "∞" if height > MAX_BUILDING_HEIGHT else str(height)
+
+            if worker:
+                cell_str = f"{worker}-H{height_str}"
+            else:
+                cell_str = f"H{height_str}"
+
+            # Center-align each cell in 7 chars
+            print(f"{cell_str:^7}", end="")
+
+        print()  # Newline after each row
+    print()  # Extra blank line after the board

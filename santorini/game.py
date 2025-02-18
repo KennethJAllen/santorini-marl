@@ -1,5 +1,6 @@
+"""Main Santorini game state logic"""
 import enum
-from santorini.board import Board
+from santorini.board import Board, print_board
 from santorini.player import Player, Worker
 from santorini import utils
 from santorini.config import NUM_WORKERS
@@ -60,7 +61,7 @@ class Game:
         Sets player pieces on the board.
         Takes an action which is a position index from 0 to 25.
         """
-        current_player = self._get_current_player()
+        current_player = self.get_current_player()
         # TODO: calculate valid actions first
         # if action not in current_player.get_valid_actions():
         #     raise ValueError("Invalid action.")
@@ -103,10 +104,10 @@ class Game:
 
     def _end_turn(self) -> None:
         """Passes the turn to the next player and checks if they have a valid move."""
-        current_player = self._get_current_player()
+        current_player = self.get_current_player()
         # cycle through player turns
         self._current_player_index = (self._current_player_index + 1) % len(self._players)
-        next_player = self._get_current_player()
+        next_player = self.get_current_player()
     
         # check that next player has a valid move
         if not next_player.get_valid_actions():
@@ -116,7 +117,8 @@ class Game:
             # ][It is a game over if there is 1 player left.
             self._state = GameState.GAME_OVER
 
-    def _get_current_player(self) -> Player:
+    def get_current_player(self) -> Player:
+        """Returns the current player."""
         return self._players[self._current_player_index]
 
     def _init_players(self, num_players) -> None:
@@ -145,6 +147,18 @@ class Game:
         for player in self._players:
             self._update_player_valid_actions(player)
 
+    def get_state(self) -> GameState:
+        """Returns the game state"""
+        return self._state
+
+    def get_board(self) -> Board:
+        """Returns the game board"""
+        return self._board
+
+    def get_winner(self) -> Player | None:
+        """Returns the winner if the game if one exists. Else return None."""
+        return self._winner
+
     # def ai_take_turn(self, ai_model):
     #     obs = self._encode_observation_for_ai()
     #     action = ai_model.predict(obs)  # or a similar call
@@ -153,6 +167,7 @@ class Game:
 
 ### TEMP
 def main():
+    """Command line interface for playing the game."""
     game = Game()
     # initi 2 players
     game.step(2)
@@ -166,7 +181,7 @@ def main():
     #print(game._board.print_state())
     #print(game._get_current_player().get_valid_actions())
     game.step((0, 1, 0))
-    print(game._board.print_state())
+    print_board(game._board)
 
 if __name__ == "__main__":
     main()
