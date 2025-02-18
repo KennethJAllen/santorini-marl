@@ -33,16 +33,14 @@ class Board:
         """
         return self._grid_size
 
-    def move_worker(self, current_position: tuple[int, int], target_position: tuple[int, int]) -> None:
+    def move_worker(self, worker: Worker, target_position: tuple[int, int]) -> None:
         """
-        Moves a worker from current_position to new_position.
-
-        current_position: A tuple (x, y) indicating the worker's current position.
+        Moves a worker to new_position.
+        worker: A Worker to move.
         new_position: A tuple (x, y) indicating the new position to move the worker to.
-        return: True if the move won the game, false otherwise.
         """
-        worker = self._get_position_worker(current_position)
-        self._set_position_worker(current_position, Worker()) # default worker represents no worker
+        worker_position = worker.get_position()
+        self._set_position_worker(worker_position, Worker()) # default worker represents no worker
         self._set_position_worker(target_position, worker)
         self._check_height_win_condition(target_position)
 
@@ -91,7 +89,7 @@ class Board:
         for i in range(-1,2):
             for j in range(-1,2):
                 target_position = x + i, y + j
-                if i == 0 and j == 0:
+                if target_position == position:
                     continue
                 if self._can_move(position, target_position):
                     valid_moves.append(target_position)

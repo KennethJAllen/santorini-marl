@@ -88,9 +88,9 @@ class Game:
             raise ValueError("Invalid action.")
 
         worker_id, move_index, build_index = action
-        worker_position = current_player.get_worker(worker_id)
+        worker = current_player.get_worker(worker_id)
         move_position = utils.space_index_to_position(move_index)
-        self._board.move_worker(worker_position , move_position)
+        self._board.move_worker(worker, move_position)
 
         build_position = utils.space_index_to_position(build_index)
         self._board.build(build_position)
@@ -158,11 +158,14 @@ def main():
     game.step(2)
     # place workers
     print(game._state)
-    game.step(20)
-    game.step(15)
-    game.step(16)
-    game.step(1)
+    game.step(0)
+    game.step(22)
+    game.step(23)
+    game.step(24)
     print(game._state)
+    #print(game._board.print_state())
+    #print(game._get_current_player().get_valid_actions())
+    game.step((0, 1, 0))
     print(game._board.print_state())
 
 if __name__ == "__main__":

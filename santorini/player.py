@@ -71,7 +71,7 @@ class Player:
             self._workers = workers
 
     def __bool__(self):
-        return bool(self._id)
+        return False if self._id is None else True
 
     def get_id(self):
         """Reutnrs the id corresponding to the player."""
