@@ -1,7 +1,7 @@
 """Main Santorini game state logic"""
 import enum
 import numpy as np
-from santorini.board import Board, print_board
+from santorini.board import Board
 from santorini.player import Player, Worker
 from santorini import utils
 from santorini.config import NUM_WORKERS
@@ -53,7 +53,7 @@ class Game:
         Returns an array-based representation of the board state
         shape=(5,5,2)
         channel 1: building height
-        channel 2: which player occupies each cell (or -1 if empty)
+        channel 2: which player (first, second, third) occupies each cell (or 0 if empty)
         """
         return self._board.get_observation()
 
@@ -122,7 +122,7 @@ class Game:
         # cycle through player turns
         self._current_player_index = (self._current_player_index + 1) % len(self._players)
         next_player = self.get_current_player()
-    
+
         # check that next player has a valid move
         if not next_player.get_valid_actions():
             # TODO: fix this logic for 3 players.
@@ -192,7 +192,7 @@ class Game:
 #     #print(game._board.print_state())
 #     #print(game._get_current_player().get_valid_actions())
 #     game.step((0, 1, 0))
-#     print_board(game._board)
+#     game.get_board().print_board()
 
 # if __name__ == "__main__":
 #     main()

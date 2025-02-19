@@ -105,9 +105,9 @@ class Board:
                 obs[i, j, 0] = self.get_position_height((i, j))
                 player_id = self.get_position_worker((i, j)).get_player().get_id()
                 if player_id is None:
-                    obs[i, j, 1] = -1
+                    obs[i, j, 1] = 0
                 else:
-                    obs[i, j, 1] = player_id
+                    obs[i, j, 1] = player_id+1
         return obs
 
     def is_done(self):
@@ -240,35 +240,35 @@ class Board:
         """
         self._state = state_data
 
-def print_board(board: Board) -> None:
-    """Prints the board with column headers, row labels,
-    and column-aligned cells showing worker or height."""
+    def print_board(self) -> None:
+        """Prints the board with column headers, row labels,
+        and column-aligned cells showing worker or height."""
 
-    # Print top column indices
-    print("    ", end="")  # Leading spaces for alignment
-    for col in range(GRID_SIZE):
-        print(f"{col:^7}", end="")  # Center each column header in 7 chars
-    print()
-
-    for row in range(GRID_SIZE):
-        # Print row index on the left
-        print(f"{row:<3}", end="")  # Left-align row index in 3 chars
-
+        # Print top column indices
+        print("    ", end="")  # Leading spaces for alignment
         for col in range(GRID_SIZE):
-            position = (row, col)
-            worker = board.get_position_worker(position)
-            height = board.get_position_height(position)
+            print(f"{col:^7}", end="")  # Center each column header in 7 chars
+        print()
 
-            # Convert height to a string. Represent capped space with "∞".
-            height_str = "∞" if height > MAX_BUILDING_HEIGHT else str(height)
+        for row in range(GRID_SIZE):
+            # Print row index on the left
+            print(f"{row:<3}", end="")  # Left-align row index in 3 chars
 
-            if worker:
-                cell_str = f"{worker}-H{height_str}"
-            else:
-                cell_str = f"H{height_str}"
+            for col in range(GRID_SIZE):
+                position = (row, col)
+                worker = self.get_position_worker(position)
+                height = self.get_position_height(position)
 
-            # Center-align each cell in 7 chars
-            print(f"{cell_str:^7}", end="")
+                # Convert height to a string. Represent capped space with "∞".
+                height_str = "∞" if height > MAX_BUILDING_HEIGHT else str(height)
 
-        print()  # Newline after each row
-    print()  # Extra blank line after the board
+                if worker:
+                    cell_str = f"{worker}-H{height_str}"
+                else:
+                    cell_str = f"H{height_str}"
+
+                # Center-align each cell in 7 chars
+                print(f"{cell_str:^7}", end="")
+
+            print()  # Newline after each row
+        print()  # Extra blank line after the board

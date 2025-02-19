@@ -1,6 +1,5 @@
 """Santorini command line interface"""
 from santorini.game import Game, GameState
-from santorini.board import print_board
 from santorini import utils
 
 def run_cli():
@@ -9,7 +8,7 @@ def run_cli():
     # Main loop
     while True:
         # Print the board each time so we can see the current state.
-        print_board(game.get_board())
+        game.get_board().print_board()
         state = game.get_state()
 
         # If game is over, announce winner and stop
