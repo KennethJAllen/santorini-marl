@@ -1,5 +1,6 @@
 """Defines Board class."""
 from collections import defaultdict
+import numpy as np
 from santorini.player import Worker
 from santorini import utils
 from santorini.config import GRID_SIZE, MAX_BUILDING_HEIGHT
@@ -62,8 +63,18 @@ class Board:
         return True
 
     def place_worker(self, position: tuple[int, int], worker: Worker) -> None:
-        """Place the worker on the location."""
+        """Place the worker on the location"""
         self._set_position_worker(position, worker)
+
+    def get_valid_placement_actions(self) -> set[int]:
+        """Gets all valid_locations where a worker can be placed"""
+        valid_actions = set()
+        for i in range(self._grid_size):
+            for j in range(self._grid_size):
+                if not self.get_position_worker((i, j)):
+                    action = utils.space_position_to_index((i, j))
+                    valid_actions.add(action)
+        return valid_actions
 
     def get_valid_worker_actions(self, worker: Worker) -> set[tuple[int, int, int]]:
         """
@@ -80,6 +91,37 @@ class Board:
                 build_index = utils.space_position_to_index(build)
                 valid_actions.add((worker.get_id(), move_index, build_index))
         return valid_actions
+
+    def get_observation(self) -> np.ndarray:
+        """
+        Returns an array-based representation of the board state
+        shape=(5,5,2)
+        channel 1: building height
+        channel 2: which player occupies each cell (or -1 if empty)
+        """
+        obs = np.array((self._grid_size, self._grid_size, 2))
+        for i in range(self._grid_size):
+            for j in range(self._grid_size):
+                obs[i, j, 0] = self.get_position_height((i, j))
+                player_id = self.get_position_worker((i, j)).get_player().get_id()
+                if player_id is None:
+                    obs[i, j, 1] = -1
+                else:
+                    obs[i, j, 1] = player_id
+        return obs
+
+    def is_done(self):
+        """Returns True if a player has won, False otherwise."""
+        return self._game_over
+
+    def get_position_worker(self, position: tuple[int, int]) -> Worker:
+        """Returns the worker in the given position."""
+        return self._state[position][0]
+
+    def get_position_height(self, position: tuple[int, int]) -> int:
+        """Returns the building height at the given position.
+        If the position is capped, returns max height + 1."""
+        return self._state[position][1]
 
     def _get_valid_moves_from_position(self, position: tuple[int, int]) -> list[tuple[int, int]]:
         """Returns set of valid moves that a worker in worker position can move to."""
@@ -131,23 +173,10 @@ class Board:
                 valid_positions.append(target_position)
         return valid_positions
 
-    def is_game_over(self):
-        """Returns True if a player has won, False otherwise."""
-        return self._game_over
-
-    def get_position_worker(self, position: tuple[int, int]) -> Worker:
-        """Returns the worker in the given position."""
-        return self._state[position][0]
-
     def _set_position_worker(self, position: tuple[int, int], worker: Worker) -> None:
         """Sets the given worker on the given position."""
         self._state[position][0] = worker
         worker.set_positon(position)
-
-    def get_position_height(self, position: tuple[int, int]) -> int:
-        """Returns the building height at the given position.
-        If the position is capped, returns max height + 1."""
-        return self._state[position][1]
 
     def _set_position_height(self, position: tuple[int, int], height: int) -> None:
         """Sets the given height on the given position."""

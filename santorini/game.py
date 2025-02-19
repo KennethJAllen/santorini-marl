@@ -1,5 +1,6 @@
 """Main Santorini game state logic"""
 import enum
+import numpy as np
 from santorini.board import Board, print_board
 from santorini.player import Player, Worker
 from santorini import utils
@@ -43,18 +44,31 @@ class Game:
         elif self._state == GameState.PLAYING:
             self._handle_turn(action)
         elif self._state == GameState.GAME_OVER:
-            print("Game is over.")
+            pass
         else:
             raise ValueError(f"State not handles by 'update_game': {self._state}")
 
+    def get_observation(self) -> np.ndarray:
+        """
+        Returns an array-based representation of the board state
+        shape=(5,5,2)
+        channel 1: building height
+        channel 2: which player occupies each cell (or -1 if empty)
+        """
+        return self._board.get_observation()
+
+    def is_done(self) -> bool:
+        """True if game is over, false otherwise."""
+        return self._state == GameState.GAME_OVER
+
     def _handle_player_select(self, action: int) -> None:
         """Action is the number of players chosen."""
-        if action not in (2, 3):
+        valid_actions = {2, 3}
+        if action not in valid_actions:
             raise ValueError(f"Number of players must be 2 or 3. Instead got: {action}")
         num_players = action
         self._init_players(num_players)
         self._state = GameState.SETUP
-        # TODO: Calculate all valid player actions which include piece placement.
 
     def _handle_setup(self, action) -> None:
         """
@@ -62,9 +76,9 @@ class Game:
         Takes an action which is a position index from 0 to 25.
         """
         current_player = self.get_current_player()
-        # TODO: calculate valid actions first
-        # if action not in current_player.get_valid_actions():
-        #     raise ValueError("Invalid action.")
+        valid_actions = self._board.get_valid_placement_actions()
+        if not action in valid_actions:
+            raise ValueError(f"Invalid action: {action}")
 
         position = utils.space_index_to_position(action)
         worker_id = len(current_player.get_workers())
@@ -86,7 +100,7 @@ class Game:
         """
         current_player = self._players[self._current_player_index]
         if action not in current_player.get_valid_actions():
-            raise ValueError("Invalid action.")
+            raise ValueError(f"Invalid action: {action}")
 
         worker_id, move_index, build_index = action
         worker = current_player.get_worker(worker_id)
@@ -95,14 +109,14 @@ class Game:
 
         build_position = utils.space_index_to_position(build_index)
         self._board.build(build_position)
-        if self._board.is_game_over():
+        if self._board.is_done():
             self._state = GameState.GAME_OVER
             self._winner = current_player
         else:
             self._update_player_valid_actions(current_player)
-            self._end_turn()
+            self._cycle_turn()
 
-    def _end_turn(self) -> None:
+    def _cycle_turn(self) -> None:
         """Passes the turn to the next player and checks if they have a valid move."""
         current_player = self.get_current_player()
         # cycle through player turns
@@ -111,15 +125,10 @@ class Game:
     
         # check that next player has a valid move
         if not next_player.get_valid_actions():
+            # TODO: fix this logic for 3 players.
+            # If a player has no valid moves, their pieces should be removed from the game.
             self._winner = current_player
-            # Fix this logic for 3 player games.
-            # If a player does not have a valid move, that player should be removed form the game.
-            # ][It is a game over if there is 1 player left.
             self._state = GameState.GAME_OVER
-
-    def get_current_player(self) -> Player:
-        """Returns the current player."""
-        return self._players[self._current_player_index]
 
     def _init_players(self, num_players) -> None:
         """Initializes the players in the game."""
@@ -147,6 +156,10 @@ class Game:
         for player in self._players:
             self._update_player_valid_actions(player)
 
+    def get_current_player(self) -> Player:
+        """Returns the current player."""
+        return self._players[self._current_player_index]
+
     def get_state(self) -> GameState:
         """Returns the game state"""
         return self._state
@@ -162,26 +175,24 @@ class Game:
     # def ai_take_turn(self, ai_model):
     #     obs = self._encode_observation_for_ai()
     #     action = ai_model.predict(obs)  # or a similar call
-    #     self.apply_action(action)
+#     2#     self.apply_action(action)
 
+# def main():
+#     """Command line interface for playing the game."""
+#     game = Game()
+#     # initi 2 players
+#     game.step(2)
+#     # place workers
+#     print(game._state)
+#     game.step(0)
+#     game.step(22)
+#     game.step(23)
+#     game.step(24)
+#     print(game._state)
+#     #print(game._board.print_state())
+#     #print(game._get_current_player().get_valid_actions())
+#     game.step((0, 1, 0))
+#     print_board(game._board)
 
-### TEMP
-def main():
-    """Command line interface for playing the game."""
-    game = Game()
-    # initi 2 players
-    game.step(2)
-    # place workers
-    print(game._state)
-    game.step(0)
-    game.step(22)
-    game.step(23)
-    game.step(24)
-    print(game._state)
-    #print(game._board.print_state())
-    #print(game._get_current_player().get_valid_actions())
-    game.step((0, 1, 0))
-    print_board(game._board)
-
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
