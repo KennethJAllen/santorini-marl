@@ -10,19 +10,19 @@ class SantoriniEnv(gym.Env):
     A Gymnasium environment wrapper for Santorini.
     This example focuses on a single-agent controlling one 'player' in a 2-player game.
     """
-    def __init__(self, board_size=GRID_SIZE, num_workers=NUM_WORKERS):
+    def __init__(self, grid_size=GRID_SIZE, num_workers=NUM_WORKERS):
         super().__init__()
 
-        self.board_size = board_size
+        self.grid_size = grid_size
     
         # Action space: (worker_id, move_index, build_index)
-        num_spaces = board_size**2
+        num_spaces = grid_size**2
         self.action_space = spaces.MultiDiscrete([num_workers, num_spaces, num_spaces])
 
        # Observation space: (row, col, player_id)
         num_players = 2
-        obs_low = np.zeros((board_size, board_size, 2), dtype=np.float32)
-        obs_high = np.zeros((board_size, board_size, 2), dtype=np.float32)
+        obs_low = np.zeros((grid_size, grid_size, 2), dtype=np.float32)
+        obs_high = np.zeros((grid_size, grid_size, 2), dtype=np.float32)
         # channel 0 (height): 0..4
         obs_high[:,:,0] = 4
         # channel 1 (occupant): 0..2 (where occupant = -1 becomes 0, occupant 0, 1 becomes 1, 2, etc.)
@@ -76,7 +76,7 @@ class SantoriniEnv(gym.Env):
         if done:
             # Example: +1 if we are the winner, else 0
             winner = self.game.get_winner()
-            if winner and winner.get_player_id() == self.current_player_id:
+            if winner and winner.get_id() == self.current_player_id:
                 reward = 1.0
             else:
                 reward = -1.0
