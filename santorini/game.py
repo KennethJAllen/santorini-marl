@@ -99,7 +99,7 @@ class Game:
         to the game state if it is a valid action.
         """
         current_player = self._players[self._current_player_index]
-        if action not in current_player.get_valid_actions():
+        if tuple(action) not in current_player.get_valid_actions():
             raise ValueError(f"Invalid action: {action}")
 
         worker_id, move_index, build_index = action

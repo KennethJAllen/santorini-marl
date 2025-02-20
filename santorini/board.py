@@ -99,15 +99,15 @@ class Board:
         channel 1: building height
         channel 2: which player occupies each cell (or -1 if empty)
         """
-        obs = np.array((self._grid_size, self._grid_size, 2))
+        obs = np.empty((self._grid_size, self._grid_size, 2))
         for i in range(self._grid_size):
             for j in range(self._grid_size):
                 obs[i, j, 0] = self.get_position_height((i, j))
-                player_id = self.get_position_worker((i, j)).get_player().get_id()
-                if player_id is None:
+                player = self.get_position_worker((i, j)).get_player()
+                if player is None:
                     obs[i, j, 1] = 0
                 else:
-                    obs[i, j, 1] = player_id+1
+                    obs[i, j, 1] = player.get_id() + 1
         return obs
 
     def is_done(self):
