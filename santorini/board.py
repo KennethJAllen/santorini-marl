@@ -8,23 +8,24 @@ from santorini.config import GRID_SIZE, MAX_BUILDING_HEIGHT
 class Board:
     """Board class to handle the game board, buildings, board state, and displaying the board."""
 
-    def __init__(self):
+    def __init__(self, grid_size = GRID_SIZE, max_building_height = MAX_BUILDING_HEIGHT, state = None):
         """
         Initializes the game board.
 
         _grid_size: The length and width of the square board. Default 5.
         _max_building_height: The maximum height of a non-capped building. Default 3.
-        _game_over: Flag if the game is over. Default False.
         _select: The space the current player has selected.
         """
-        self._grid_size = GRID_SIZE
-        self._max_building_height = MAX_BUILDING_HEIGHT
-        self._game_over = False
+        self._grid_size = grid_size
+        self._max_building_height = max_building_height
 
         # board state stored as a dict:
         # key: tuple of integers (x,y) representing location on the board
         # value: list of worker, building height.
-        self._state = defaultdict(lambda: [Worker(), 0])
+        if state is None:
+            self._state = defaultdict(lambda: [Worker(), 0])
+        else:
+            self._state = state
 
     def get_grid_size(self) -> int:
         """
@@ -34,16 +35,18 @@ class Board:
         """
         return self._grid_size
 
-    def move_worker(self, worker: Worker, target_position: tuple[int, int]) -> None:
+    def move_worker(self, worker: Worker, target_position: tuple[int, int]) -> bool:
         """
         Moves a worker to new_position.
         worker: A Worker to move.
         new_position: A tuple (x, y) indicating the new position to move the worker to.
+        Returns True if the move was to a winning height, False otherwise.
         """
         worker_position = worker.get_position()
         self._set_position_worker(worker_position, Worker()) # default worker represents no worker
         self._set_position_worker(target_position, worker)
-        self._check_height_win_condition(target_position)
+        did_move_win = self.get_position_height(target_position) == self._max_building_height
+        return did_move_win
 
     def build(self, build_position: tuple[int, int])  -> None:
         """
@@ -51,16 +54,6 @@ class Board:
         Assumes the check that the build is valid happens when the move is validated.
         """
         self._state[build_position][1] += 1
-
-    def can_place(self, position: tuple[int, int]) -> bool:
-        """Check if placing worker on position is valid."""
-        # Check positions are on the board
-        if not self._is_on_board(position):
-            return False
-        # Check worker is on position
-        if self.get_position_worker(position):
-            return False
-        return True
 
     def place_worker(self, position: tuple[int, int], worker: Worker) -> None:
         """Place the worker on the location"""
@@ -110,10 +103,6 @@ class Board:
                     obs[i, j, 1] = player.get_id() + 1
         return obs
 
-    def is_done(self):
-        """Returns True if a player has won, False otherwise."""
-        return self._game_over
-
     def get_position_worker(self, position: tuple[int, int]) -> Worker:
         """Returns the worker in the given position."""
         return self._state[position][0]
@@ -124,7 +113,7 @@ class Board:
         return self._state[position][1]
 
     def _get_valid_moves_from_position(self, position: tuple[int, int]) -> list[tuple[int, int]]:
-        """Returns set of valid moves that a worker in worker position can move to."""
+        """Returns set of valid moves that a worker in position can move to."""
         x, y = position
         # check all adjacent positions for valid moves
         valid_moves = []
@@ -141,12 +130,14 @@ class Board:
         """
         If the worker moves to the given position,
         returns a list of valid positions for the worker to build.
+        It is important to track which worker moved to the given position,
+        because if a worker moves they can build on their previously occupied space.
         """
         valid_positions = []
         # If the move would result in a win, can "build" anywhere
-        if self.get_position_height(position) == MAX_BUILDING_HEIGHT:
-            for row in range(GRID_SIZE):
-                for col in range(GRID_SIZE):
+        if self.get_position_height(position) == self._max_building_height:
+            for row in range(self._grid_size):
+                for col in range(self._grid_size):
                     target_position = (row, col)
                     valid_positions.append(target_position)
             return valid_positions
@@ -177,10 +168,6 @@ class Board:
         """Sets the given worker on the given position."""
         self._state[position][0] = worker
         worker.set_positon(position)
-
-    def _set_position_height(self, position: tuple[int, int], height: int) -> None:
-        """Sets the given height on the given position."""
-        self._state[position][1] = height
 
     def _can_move(self, worker_position: tuple[int, int], target_position: tuple[int,int]) -> bool:
         """
@@ -216,16 +203,6 @@ class Board:
             return False
         return True
 
-    def _check_height_win_condition(self, position: tuple[int,int]):
-        """
-        Checks if moving to the given position meets the win condition (reaching the third level).
-
-        target_position: A tuple (x, y) indicating the position to check.
-        return: True if the position is on the third level, False otherwise.
-        """
-        if self.get_position_height(position) == self._max_building_height:
-            self._game_over = True
-
     def _is_on_board(self, position: tuple[int, int]) -> bool:
         """Returns true if position is on the board. Returns false otherwise."""
         x, y = position
@@ -233,34 +210,27 @@ class Board:
             return True
         return False
 
-    def _set_state(self, state_data: dict[tuple[int, int], list[Worker, int]]) -> None:
-        """
-        Sets the board state corresponding to the given state data.
-        This is used for testing.
-        """
-        self._state = state_data
-
-    def print_board(self) -> None:
+    def render(self) -> None:
         """Prints the board with column headers, row labels,
         and column-aligned cells showing worker or height."""
 
         # Print top column indices
         print("    ", end="")  # Leading spaces for alignment
-        for col in range(GRID_SIZE):
+        for col in range(self._grid_size):
             print(f"{col:^7}", end="")  # Center each column header in 7 chars
         print()
 
-        for row in range(GRID_SIZE):
+        for row in range(self._grid_size):
             # Print row index on the left
             print(f"{row:<3}", end="")  # Left-align row index in 3 chars
 
-            for col in range(GRID_SIZE):
+            for col in range(self._grid_size):
                 position = (row, col)
                 worker = self.get_position_worker(position)
                 height = self.get_position_height(position)
 
                 # Convert height to a string. Represent capped space with "∞".
-                height_str = "∞" if height > MAX_BUILDING_HEIGHT else str(height)
+                height_str = "∞" if height > self._max_building_height else str(height)
 
                 if worker:
                     cell_str = f"{worker}-H{height_str}"

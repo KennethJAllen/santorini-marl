@@ -20,7 +20,7 @@ class Game:
         self._players: list[Player] = [] # List of Player objects participating in the game
         self._current_player_index: int = 0  # Index to keep track of whose turn it is
         self._state = GameState.PLAYER_SELECT
-        self._winner = None # the winner of the game
+        self._winner: Player = None # the winner of the game
 
     def reset(self) -> None:
         """Sets the board back to start."""
@@ -44,28 +44,16 @@ class Game:
         elif self._state == GameState.PLAYING:
             self._handle_turn(action)
         elif self._state == GameState.GAME_OVER:
+            # Game over: No actions can be taken
             pass
         else:
             raise ValueError(f"State not handles by 'update_game': {self._state}")
 
-    def get_observation(self) -> np.ndarray:
-        """
-        Returns an array-based representation of the board state
-        shape=(5,5,2)
-        channel 1: building height
-        channel 2: which player (first, second, third) occupies each cell (or 0 if empty)
-        """
-        return self._board.get_observation()
-
-    def is_done(self) -> bool:
-        """True if game is over, false otherwise."""
-        return self._state == GameState.GAME_OVER
-
     def _handle_player_select(self, action: int) -> None:
         """Action is the number of players chosen."""
-        valid_actions = {2, 3}
+        valid_actions = [2, 3]
         if action not in valid_actions:
-            raise ValueError(f"Number of players must be 2 or 3. Instead got: {action}")
+            raise ValueError(f"Number of players must be one of {', '.join(map(str,valid_actions))}. Instead got: {action}")
         num_players = action
         self._init_players(num_players)
         self._state = GameState.SETUP
@@ -90,7 +78,7 @@ class Game:
             self._current_player_index += 1
             if self._current_player_index >= len(self._players):
                 self._current_player_index = 0
-                self._update_all_valid_actions()
+                self._update_current_player_valid_actions()
                 self._state = GameState.PLAYING
 
     def _handle_turn(self, action: tuple[int, int, int]) -> None:
@@ -103,31 +91,30 @@ class Game:
             raise ValueError(f"Invalid action: {action}")
 
         worker_id, move_index, build_index = action
+
         worker = current_player.get_worker(worker_id)
         move_position = utils.space_index_to_position(move_index)
-        self._board.move_worker(worker, move_position)
-
-        build_position = utils.space_index_to_position(build_index)
-        self._board.build(build_position)
-        if self._board.is_done():
+        did_move_win = self._board.move_worker(worker, move_position)
+        if did_move_win:
             self._state = GameState.GAME_OVER
             self._winner = current_player
         else:
-            self._update_player_valid_actions(current_player)
+            build_position = utils.space_index_to_position(build_index)
+            self._board.build(build_position)
             self._cycle_turn()
 
     def _cycle_turn(self) -> None:
         """Passes the turn to the next player and checks if they have a valid move."""
-        current_player = self.get_current_player()
+        previous_player = self.get_current_player()
         # cycle through player turns
         self._current_player_index = (self._current_player_index + 1) % len(self._players)
-        next_player = self.get_current_player()
-
-        # check that next player has a valid move
-        if not next_player.get_valid_actions():
+        current_player = self.get_current_player()
+        self._update_current_player_valid_actions()
+        if not current_player.get_valid_actions(): # if next player has no valid moves
             # TODO: fix this logic for 3 players.
             # If a player has no valid moves, their pieces should be removed from the game.
-            self._winner = current_player
+            # Then, if there is 1 player left, the winner should be declared.
+            self._winner = previous_player
             self._state = GameState.GAME_OVER
 
     def _init_players(self, num_players) -> None:
@@ -135,12 +122,13 @@ class Game:
         for player_id in range(num_players):
             self._players.append(Player(player_id))
 
-    def _update_player_valid_actions(self, player: Player) -> None:
+    def _update_current_player_valid_actions(self) -> None:
         """
         Updates all valid actions the player can take.
         An action is of the form (worker_id, move_index, build_index).
         If a move will win the game (by moving a piece to a height 3 building), the build index is arbitrary.
         """
+        player = self.get_current_player()
         player_valid_actions = set()
         for worker in player.get_workers():
             worker_valid_actions = self._board.get_valid_worker_actions(worker)
@@ -148,20 +136,30 @@ class Game:
             player_valid_actions = player_valid_actions | worker_valid_actions
         player.set_valid_actions(player_valid_actions)
 
-    def _update_all_valid_actions(self) -> None:
+    def get_observation(self) -> np.ndarray:
         """
-        Updates the valid actions for all players.
-        An action is of the form (worker_id, move_index, build_index).
+        Returns an array-based representation of the board state
+        shape=(5,5,2)
+        channel 1: building height
+        channel 2: which player (first, second, third) occupies each cell (or 0 if empty)
         """
-        for player in self._players:
-            self._update_player_valid_actions(player)
+        return self._board.get_observation()
+
+    def is_done(self) -> bool:
+        """True if game is over, false otherwise."""
+        return self._state == GameState.GAME_OVER
 
     def get_current_player(self) -> Player:
         """Returns the current player."""
+        if self._players is None:
+            raise ValueError("Cannot get the current player, players are not initialized.")
         return self._players[self._current_player_index]
 
     def get_state(self) -> GameState:
-        """Returns the game state"""
+        """
+        Returns the game state. One of:
+        PLAYER_SELECT, SETUP, PLAYING, GAME_OVER
+        """
         return self._state
 
     def get_board(self) -> Board:
@@ -174,7 +172,7 @@ class Game:
 
     # def ai_take_turn(self, ai_model):
     #     obs = self._encode_observation_for_ai()
-    #     action = ai_model.predict(obs)  # or a similar call
+    #     action = ai_model.predict(obs)
 #     2#     self.apply_action(action)
 
 # def main():
