@@ -8,7 +8,7 @@ def run_cli():
     # Main loop
     while True:
         # Print the board each time so we can see the current state.
-        game.get_board().print_board()
+        game.get_board().render()
         state = game.get_state()
 
         # If game is over, announce winner and stop
@@ -33,11 +33,9 @@ def run_cli():
             # Player is placing a worker. Let’s ask for a board position 0..24 (on a 5x5).
             print("Setup phase: place your worker on an empty space (row, col).")
             try:
-                row_str = input("Enter the row: ")
-                col_str = input("Enter the col: ")
-                row = int(row_str)
-                col = int(col_str)
-                action = utils.space_position_to_index((row, col))
+                p_str = input("Enter the placement as comma separated row, col: ")
+                p_row, p_col = tuple(map(int, p_str.split(','))) # split move string
+                action = utils.space_position_to_index((p_row, p_col))
                 game.step(action)
             except ValueError as e:
                 print(f"Invalid input: {e}")
@@ -50,16 +48,12 @@ def run_cli():
                 w_id_str = input("Enter worker_id: ")
                 worker_id = int(w_id_str)
 
-                m_row_str = input("Enter the move row: ")
-                m_col_str = input("Enter the move col: ")
-                m_row = int(m_row_str)
-                m_col = int(m_col_str)
+                m_str = input("Enter the move as comma separated row, col: ")
+                m_row, m_col = tuple(map(int, m_str.split(','))) # split move string
                 move_index = utils.space_position_to_index((m_row, m_col))
 
-                b_row_str = input("Enter the build row: ")
-                b_col_str = input("Enter the build col: ")
-                b_row = int(b_row_str)
-                b_col = int(b_col_str)
+                b_str = input("Enter the build as separated row, col: ")
+                b_row, b_col = tuple(map(int, b_str.split(','))) # split build string
                 build_index = utils.space_position_to_index((b_row, b_col))
 
                 action = (worker_id, move_index, build_index)
