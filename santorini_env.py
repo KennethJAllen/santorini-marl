@@ -71,8 +71,13 @@ class SantoriniEnv(gym.Env):
                 # If the action is invalid
                 pass
 
-        # Compute reward
-        done = (self.game.get_state() == GameState.GAME_OVER)
+        done = self.game.is_done()
+        # If not done, have the opponent make a random or heuristic move
+        if not done:
+            opponent_action = self._compute_opponent_action()
+            self.game.step(opponent_action)
+            done = self.game.is_done()
+
         if done:
             # Example: +1 if we are the winner, else 0
             winner = self.game.get_winner()
@@ -94,7 +99,7 @@ class SantoriniEnv(gym.Env):
     def render(self):
         """Prints the current board state."""
         print("Current board:")
-        self.game.get_board().print_board()
+        self.game.get_board().render()
 
     def _get_observation(self):
         """
@@ -103,3 +108,6 @@ class SantoriniEnv(gym.Env):
         """
         obs = self.game.get_observation()
         return obs
+
+    def _compute_opponent_action(self):
+        return None
