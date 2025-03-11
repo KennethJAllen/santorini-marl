@@ -1,5 +1,6 @@
 """Defines Board class."""
 from collections import defaultdict
+from itertools import product
 import numpy as np
 from santorini.player import Worker
 from santorini import utils
@@ -26,6 +27,39 @@ class Board:
             self._state = defaultdict(lambda: [Worker(), 0])
         else:
             self._state = state
+
+    def __str__(self) -> str:
+        """Return a string representing the board with column headers,
+        row labels, and column-aligned cells showing worker or height."""
+        lines = []
+
+        # Build header with column indices.
+        header = "    " + "".join(f"{col:^7}" for col in range(self._grid_size))
+        lines.append(header)
+
+        for row in range(self._grid_size):
+            # Start each row with the row label.
+            row_line = f"{row:<3}"
+            for col in range(self._grid_size):
+                position = (row, col)
+                worker = self.get_position_worker(position)
+                height = self.get_position_height(position)
+
+                # Represent capped space with "∞" if needed.
+                height_str = "∞" if height > self._max_building_height else str(height)
+
+                if worker:
+                    cell_str = f"{worker}-H{height_str}"
+                else:
+                    cell_str = f"H{height_str}"
+
+                # Append the cell, center-aligned in a field of width 7.
+                row_line += f"{cell_str:^7}"
+            lines.append(row_line)
+
+        # Append an extra blank line.
+        lines.append("")
+        return "\n".join(lines)
 
     def get_grid_size(self) -> int:
         """
@@ -62,11 +96,10 @@ class Board:
     def get_valid_placement_actions(self) -> set[int]:
         """Gets all valid_locations where a worker can be placed"""
         valid_actions = set()
-        for i in range(self._grid_size):
-            for j in range(self._grid_size):
-                if not self.get_position_worker((i, j)):
-                    action = utils.space_position_to_index((i, j))
-                    valid_actions.add(action)
+        for i, j in product(range(self._grid_size), range(self._grid_size)):
+            if not self.get_position_worker((i, j)):
+                action = utils.space_position_to_index((i, j))
+                valid_actions.add(action)
         return valid_actions
 
     def get_valid_worker_actions(self, worker: Worker) -> set[tuple[int, int, int]]:
@@ -85,22 +118,27 @@ class Board:
                 valid_actions.add((worker.get_id(), move_index, build_index))
         return valid_actions
 
-    def get_observation(self) -> np.ndarray:
+    def get_observation(self, current_player_index) -> np.ndarray:
         """
         Returns an array-based representation of the board state
         shape=(5,5,2)
         channel 1: building height
         channel 2: which player occupies each cell (or -1 if empty)
+        channel 3: Who is the turn player? All zeros for first player's turn, all ones for second player's turn.
         """
-        obs = np.empty((self._grid_size, self._grid_size, 2))
-        for i in range(self._grid_size):
-            for j in range(self._grid_size):
-                obs[i, j, 0] = self.get_position_height((i, j))
-                player = self.get_position_worker((i, j)).get_player()
-                if player is None:
-                    obs[i, j, 1] = 0
-                else:
-                    obs[i, j, 1] = player.get_id() + 1
+        obs = np.empty((self._grid_size, self._grid_size, 3))
+        for i, j in product(range(self._grid_size), range(self._grid_size)):
+            # channel 1
+            obs[i, j, 0] = self.get_position_height((i, j))
+
+            # channel 2
+            player = self.get_position_worker((i, j)).get_player()
+            if player is None:
+                obs[i, j, 1] = 0
+            else:
+                obs[i, j, 1] = player.get_id() + 1
+        # channel 3
+        obs[:, :, 2] = current_player_index
         return obs
 
     def get_position_worker(self, position: tuple[int, int]) -> Worker:
@@ -117,13 +155,12 @@ class Board:
         x, y = position
         # check all adjacent positions for valid moves
         valid_moves = []
-        for i in range(-1,2):
-            for j in range(-1,2):
-                target_position = x + i, y + j
-                if target_position == position:
-                    continue
-                if self._can_move(position, target_position):
-                    valid_moves.append(target_position)
+        for i, j in product(range(-1,2), range(-1,2)):
+            target_position = x + i, y + j
+            if target_position == position:
+                continue
+            if self._can_move(position, target_position):
+                valid_moves.append(target_position)
         return valid_moves
 
     def _valid_move_then_build_positions(self, worker: Worker, position: tuple[int, int]) -> list[tuple[int,int]]:
@@ -144,24 +181,23 @@ class Board:
 
         x, y = position
         # check all adjacent positions for valid builds
-        for i in range(-1,2):
-            for j in range(-1,2):
-                target_position = x + i, y + j
-                # Must build on board
-                if not self._is_on_board(position):
-                    continue
-                # Can't build on current position
-                if target_position == position:
-                    continue
-                # Check if target position is capped
-                position_height = self.get_position_height(target_position)
-                if position_height == self._max_building_height + 1:
-                    continue
-                # Check if there is a different worker on the target position
-                target_position_worker = self.get_position_worker(target_position)
-                if target_position_worker and not (target_position_worker is worker):
-                    continue
-                valid_positions.append(target_position)
+        for i, j in product(range(-1,2), range(-1,2)):
+            target_position = x + i, y + j
+            # Must build on board
+            if not self._is_on_board(position):
+                continue
+            # Can't build on current position
+            if target_position == position:
+                continue
+            # Check if target position is capped
+            position_height = self.get_position_height(target_position)
+            if position_height == self._max_building_height + 1:
+                continue
+            # Check if there is a different worker on the target position
+            target_position_worker = self.get_position_worker(target_position)
+            if target_position_worker and not (target_position_worker is worker):
+                continue
+            valid_positions.append(target_position)
         return valid_positions
 
     def _set_position_worker(self, position: tuple[int, int], worker: Worker) -> None:
@@ -209,36 +245,3 @@ class Board:
         if 0 <= x < self._grid_size and 0 <= y < self._grid_size:
             return True
         return False
-
-    def render(self) -> None:
-        """Prints the board with column headers, row labels,
-        and column-aligned cells showing worker or height."""
-
-        # Print top column indices
-        print("    ", end="")  # Leading spaces for alignment
-        for col in range(self._grid_size):
-            print(f"{col:^7}", end="")  # Center each column header in 7 chars
-        print()
-
-        for row in range(self._grid_size):
-            # Print row index on the left
-            print(f"{row:<3}", end="")  # Left-align row index in 3 chars
-
-            for col in range(self._grid_size):
-                position = (row, col)
-                worker = self.get_position_worker(position)
-                height = self.get_position_height(position)
-
-                # Convert height to a string. Represent capped space with "∞".
-                height_str = "∞" if height > self._max_building_height else str(height)
-
-                if worker:
-                    cell_str = f"{worker}-H{height_str}"
-                else:
-                    cell_str = f"H{height_str}"
-
-                # Center-align each cell in 7 chars
-                print(f"{cell_str:^7}", end="")
-
-            print()  # Newline after each row
-        print()  # Extra blank line after the board

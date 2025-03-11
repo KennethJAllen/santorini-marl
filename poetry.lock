@@ -164,6 +164,31 @@ files = [
 ]
 
 [[package]]
+name = "pettingzoo"
+version = "1.24.3"
+description = "Gymnasium for multi-agent reinforcement learning."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "pettingzoo-1.24.3-py3-none-any.whl", hash = "sha256:23ed90517d2e8a7098bdaf5e31234b3a7f7b73ca578d70d1ca7b9d0cb0e37982"},
+    {file = "pettingzoo-1.24.3.tar.gz", hash = "sha256:91f9094f18e06fb74b98f4099cd22e8ae4396125e51719d50b30c9f1c7ab07e6"},
+]
+
+[package.dependencies]
+gymnasium = ">=0.28.0"
+numpy = ">=1.21.0"
+
+[package.extras]
+all = ["box2d-py (==2.3.5)", "chess (==1.9.4)", "multi-agent-ale-py (==0.1.11)", "pillow (>=8.0.1)", "pygame (==2.3.0)", "pymunk (==6.2.0)", "rlcard (==1.0.5)", "scipy (>=1.4.1)", "shimmy[openspiel] (>=1.2.0)"]
+atari = ["multi-agent-ale-py (==0.1.11)", "pygame (==2.3.0)"]
+butterfly = ["pygame (==2.3.0)", "pymunk (==6.2.0)"]
+classic = ["chess (==1.9.4)", "pygame (==2.3.0)", "rlcard (==1.0.5)", "shimmy[openspiel] (>=1.2.0)"]
+mpe = ["pygame (==2.3.0)"]
+other = ["pillow (>=8.0.1)"]
+sisl = ["box2d-py (==2.3.5)", "pygame (==2.3.0)", "pymunk (==6.2.0)", "scipy (>=1.4.1)"]
+testing = ["AutoROM", "pre-commit", "pynput", "pytest", "pytest-cov", "pytest-markdown-docs", "pytest-xdist"]
+
+[[package]]
 name = "pluggy"
 version = "1.5.0"
 description = "plugin and hook calling mechanisms for python"
@@ -291,4 +316,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "1c07018b59df16267adeb763715b6a394324a526f9e2ecf5f14248adfcf50d99"
+content-hash = "a4a6e6034ba02167f5fbad86610d3a13b12253d7d6b45391c21ba5965ff769e9"

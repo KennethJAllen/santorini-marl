@@ -15,7 +15,8 @@ class GameState(enum.Enum):
 
 class Game:
     """Game logic, setup, and main loop."""
-    def __init__(self):
+    def __init__(self, num_workers: int = NUM_WORKERS):
+        self._num_workers = num_workers
         self._board = Board() # The game board, an instance of the Board class
         self._players: list[Player] = [] # List of Player objects participating in the game
         self._current_player_index: int = 0  # Index to keep track of whose turn it is
@@ -49,6 +50,41 @@ class Game:
         else:
             raise ValueError(f"State not handles by 'update_game': {self._state}")
 
+    def get_observation(self) -> np.ndarray:
+        """
+        Returns an array-based representation of the board state
+        shape=(5,5,3)
+        channel 1: building height
+        channel 2: which player occupies each cell. 0 for empty, 1 for first player, 2 for second player.
+        channel 3: Who is the turn player. All zeros for first player's turn, all ones for second player's turn.
+        """
+        return self._board.get_observation(self._current_player_index)
+
+    def is_done(self) -> bool:
+        """True if game is over, false otherwise."""
+        return self._state == GameState.GAME_OVER
+
+    def get_current_player(self) -> Player:
+        """Returns the current player."""
+        if self._players is None:
+            raise ValueError("Cannot get the current player, players are not initialized.")
+        return self._players[self._current_player_index]
+
+    def get_state(self) -> GameState:
+        """
+        Returns the game state. One of:
+        PLAYER_SELECT, SETUP, PLAYING, GAME_OVER
+        """
+        return self._state
+
+    def get_board(self) -> Board:
+        """Returns the game board"""
+        return self._board
+
+    def get_winner(self) -> Player | None:
+        """Returns the winner if the game if one exists. Else return None."""
+        return self._winner
+
     def _handle_player_select(self, action: int) -> None:
         """Action is the number of players chosen."""
         valid_actions = [2, 3]
@@ -74,7 +110,7 @@ class Game:
         current_player.add_worker(new_worker)
         self._board.place_worker(position, new_worker)
 
-        if len(current_player.get_workers()) >= NUM_WORKERS:
+        if len(current_player.get_workers()) >= self._num_workers:
             self._current_player_index += 1
             if self._current_player_index >= len(self._players):
                 self._current_player_index = 0
@@ -135,40 +171,6 @@ class Game:
             # Add worker's valid actions to total set of player's valid actions
             player_valid_actions = player_valid_actions | worker_valid_actions
         player.set_valid_actions(player_valid_actions)
-
-    def get_observation(self) -> np.ndarray:
-        """
-        Returns an array-based representation of the board state
-        shape=(5,5,2)
-        channel 1: building height
-        channel 2: which player (first, second, third) occupies each cell (or 0 if empty)
-        """
-        return self._board.get_observation()
-
-    def is_done(self) -> bool:
-        """True if game is over, false otherwise."""
-        return self._state == GameState.GAME_OVER
-
-    def get_current_player(self) -> Player:
-        """Returns the current player."""
-        if self._players is None:
-            raise ValueError("Cannot get the current player, players are not initialized.")
-        return self._players[self._current_player_index]
-
-    def get_state(self) -> GameState:
-        """
-        Returns the game state. One of:
-        PLAYER_SELECT, SETUP, PLAYING, GAME_OVER
-        """
-        return self._state
-
-    def get_board(self) -> Board:
-        """Returns the game board"""
-        return self._board
-
-    def get_winner(self) -> Player | None:
-        """Returns the winner if the game if one exists. Else return None."""
-        return self._winner
 
     # def ai_take_turn(self, ai_model):
     #     obs = self._encode_observation_for_ai()

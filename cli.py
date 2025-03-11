@@ -8,7 +8,7 @@ def run_cli():
     # Main loop
     while True:
         # Print the board each time so we can see the current state.
-        game.get_board().render()
+        print(str(game.get_board()))
         state = game.get_state()
 
         # If game is over, announce winner and stop
