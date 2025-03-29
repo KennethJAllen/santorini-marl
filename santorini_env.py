@@ -1,49 +1,42 @@
-import gymnasium as gym
-from gymnasium import spaces
+"""Santorini environment for multi-agent reinforcment learning training."""
 import numpy as np
+import gymnasium
+from gymnasium import spaces
+from pettingzoo import AECEnv
+from pettingzoo.utils.agent_selector import agent_selector
 
 from santorini.game import Game, GameState
-from santorini.config import GRID_SIZE, NUM_WORKERS
 
-class SantoriniEnv(gym.Env):
+class SantoriniEnv(AECEnv):
     """
-    A Gymnasium environment wrapper for Santorini.
-    This example focuses on a single-agent controlling one 'player' in a 2-player game.
+    A 2-player turn-based Santorini environment using PettingZoo's AEC API.
     """
-    def __init__(self, grid_size=GRID_SIZE, num_workers=NUM_WORKERS):
+    metadata = {
+        "render_modes": ["human", "ansi", "rgb_array"],
+        "name": "santorini_v0",
+        "render_fps": 2
+    }
+
+    def __init__(self, num_players: int = 2, render_mode: str = None):
         super().__init__()
-
-        self.grid_size = grid_size
-    
-        # Action space: (worker_id, move_index, build_index)
-        num_spaces = grid_size**2
-        self.action_space = spaces.MultiDiscrete([num_workers, num_spaces, num_spaces])
-
-       # Observation space: (row, col, player_id)
-        num_players = 2
-        obs_low = np.zeros((grid_size, grid_size, 2), dtype=np.float32)
-        obs_high = np.zeros((grid_size, grid_size, 2), dtype=np.float32)
-        # channel 0 (height): 0..4
-        obs_high[:,:,0] = 4
-        # channel 1 (occupant): 0..2 (where occupant = -1 becomes 0, occupant 0, 1 becomes 1, 2, etc.)
-        obs_high[:,:,1] = num_players
-
-        self.observation_space = spaces.Box(low=obs_low, high=obs_high, dtype=np.float32)
-
         # Initialize internal Game
         self.game = Game()
-        self.current_player_id = 0  # If controlling just one player, store that ID
+        self._num_players = num_players
 
-    def reset(self, *, seed=None, options=None):
-        """
-        Resets the game to a new episode.
-        Must return (observation, info).
-        """
+        self.agents = [f"player_{i}" for i in range(num_players)]
+        self.possible_agents = self.agents[:]
+        self._agent_selector = agent_selector(self.agents)
+
+        assert render_mode is None or render_mode in self.metadata["render_modes"]
+        self.render_mode = render_mode
+
+    def reset(self, seed=None, options=None):
+        """Resets the game"""
         super().reset(seed=seed)
         self.game.reset()
 
         # Pick 2-player mode
-        self.game.step(2)
+        self.game.step(self._num_players)
         # Now the game is in SETUP state, waiting for worker placements.
 
         observation = self._get_observation()
@@ -72,12 +65,6 @@ class SantoriniEnv(gym.Env):
                 pass
 
         done = self.game.is_done()
-        # If not done, have the opponent make a random or heuristic move
-        if not done:
-            opponent_action = self._compute_opponent_action()
-            self.game.step(opponent_action)
-            done = self.game.is_done()
-
         if done:
             # Example: +1 if we are the winner, else 0
             winner = self.game.get_winner()
@@ -97,9 +84,40 @@ class SantoriniEnv(gym.Env):
         return observation, reward, done, truncated, info
 
     def render(self):
-        """Prints the current board state."""
-        print("Current board:")
-        self.game.get_board().render()
+        """
+        Renders the game depending on the render mode.
+        ansi for string based board representation
+        human or rgb_array for gui
+        """
+        if self.render_mode is None:
+            gymnasium.logger.warn(
+                "You are calling render method without specifying any render mode."
+            )
+        elif self.render_mode == "ansi":
+            return str(self.game.get_board())
+        elif self.render_mode in {"human", "rgb_array"}:
+            raise NotImplementedError
+        else:
+            raise ValueError(
+                f"{self.render_mode} is not a valid render mode. Available modes are: {self.metadata['render_modes']}"
+            )
+
+    def action_space(self, agent):
+        num_spaces = self._grid_size**2
+        return spaces.MultiDiscrete([self._num_workers, num_spaces, num_spaces])
+
+    def observation_space(self, agent):
+       # Observation space: (row, col, player_id)
+        obs_low = np.zeros((self._grid_size, self._grid_size, 3), dtype=np.float32)
+        obs_high = np.zeros((self._grid_size, self._grid_size, 3), dtype=np.float32)
+        # channel 0 (height): 0..4
+        obs_high[:,:,0] = 4
+        # channel 1 (occupant): 0 empty, 1 first player, 2 second player
+        obs_high[:,:,1] = self._num_players
+        # channel 2 (turn player): 0 first player's turn, 1 second player's turn
+        obs_high[:,:,2] = self._num_players
+
+        return spaces.Box(low=obs_low, high=obs_high, dtype=np.float32)
 
     def _get_observation(self):
         """
@@ -108,6 +126,3 @@ class SantoriniEnv(gym.Env):
         """
         obs = self.game.get_observation()
         return obs
-
-    def _compute_opponent_action(self):
-        return None

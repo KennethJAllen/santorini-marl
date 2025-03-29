@@ -1,6 +1,6 @@
 # Santorini
 
-[Santorini](https://boardgamegeek.com/boardgame/194655/santorini), is an abstract board game, first [published in 2004](https://boardgamegeek.com/boardgame/9963/santorini). It is a two to three player game that is typically played on a $5 \times 5$ grid.
+[Santorini](https://boardgamegeek.com/boardgame/194655/santorini), is an abstract board game, first [published in 2004](https://boardgamegeek.com/boardgame/9963/santorini). It is a two to three player turn based game, typically played on a $5 \times 5$ grid, where players must reach the third level of the board.
 
 ![Santorini being played](/images/santorini.png)
 
@@ -45,6 +45,27 @@ poetry shell
 ```
 You can now run the project's scripts within the poetry shell.
 
+## Santorini Env
+
+The Santorini Env is set up for multi-agent reinforcement learning via PettingZoo.
+
+### Action Space
+
+
+
+### Observation Space
+
+The observation space is a $5 \times 5$ grid representing the board with 2 channels
+
+- Channel 1:
+    - Position height
+- Channel 2:
+    - 1 for first player piece
+    - 2 for second player piece
+    - 0 for no players
+- Channel 3:
+    - All 0 for first player's turn
+    - All 1 for second player's turn
 ## Credits
 
 Python WebAssembly by Pygbag.
