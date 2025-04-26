@@ -1,18 +1,12 @@
-[tool.poetry]
+[project]
 name = "santorini"
 version = "0.1.0"
-description = ""
-authors = ["Kenneth <kencubed@gmail.com>"]
+description = "A recreation of the board game Santorini in Python"
 readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.10"
-pytest = "^8.1.1"
-pygame = "^2.5.2"
-gymnasium = "^1.0.0"
-pettingzoo = "^1.24.3"
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires-python = ">=3.12"
+dependencies = [
+    "gymnasium>=1.1.1",
+    "pettingzoo>=1.25.0",
+    "pygame>=2.6.1",
+    "pytest>=8.3.5",
+]
