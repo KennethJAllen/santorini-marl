@@ -35,7 +35,7 @@ cd YGO-small-world
 
 - Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if not already installed.
 - Sync environments
-- `uv sync`
+    - `uv sync`
 
 ## Santorini Env
 
