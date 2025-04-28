@@ -8,13 +8,13 @@ def run_cli():
     # Main loop
     while True:
         # Print the board each time so we can see the current state.
-        print(str(game.get_board()))
-        state = game.get_state()
+        print(str(game.board))
+        state = game.state
 
         # If game is over, announce winner and stop
         if state == GameState.GAME_OVER:
-            if game.get_winner() is not None:
-                print(f"Game Over! Winner is Player {game.get_winner().get_id()}")
+            if game.winner is not None:
+                print(f"Game Over! Winner is Player {game.winner.get_id()}")
             break
 
         # Depending on the current state, ask the user for an action
@@ -43,7 +43,7 @@ def run_cli():
 
         elif state == GameState.PLAYING:
             # The game is in normal play. We expect an action like (worker_id, move_index, build_index).
-            print(f"{game.get_current_player()} turn. Input (worker_id, move_index, build_index).")
+            print(f"{game.current_player()} turn. Input (worker_id, move_index, build_index).")
             try:
                 w_id_str = input("Enter worker_id: ")
                 worker_id = int(w_id_str)

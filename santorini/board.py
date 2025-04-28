@@ -121,7 +121,7 @@ class Board:
     def get_observation(self, current_player_index) -> np.ndarray:
         """
         Returns an array-based representation of the board state
-        shape=(5,5,2)
+        shape=(5,5,3)
         channel 1: building height
         channel 2: which player occupies each cell (or -1 if empty)
         channel 3: Who is the turn player? All zeros for first player's turn, all ones for second player's turn.
