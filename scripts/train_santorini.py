@@ -1,7 +1,7 @@
 """Trains the Santorini model."""
 from pathlib import Path
 from stable_baselines3 import PPO
-from santorini_env import SantoriniEnv
+from santorini.santorini_env import SantoriniEnv
 from santorini.config import GRID_SIZE
 
 def train(grid_size: int = GRID_SIZE, total_timesteps = 100):

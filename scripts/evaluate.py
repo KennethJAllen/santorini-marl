@@ -1,6 +1,6 @@
 from pathlib import Path
 from stable_baselines3 import PPO
-from santorini_env import SantoriniEnv
+from santorini.santorini_env import SantoriniEnv
 
 def main():
     model_path = Path.cwd() / "models" / "santorini_ppo_model"
