@@ -114,6 +114,7 @@ class SantoriniEnv(AECEnv):
         current_agent = self.agent_selection
         current_index = self.agents.index(current_agent)
 
+        chosen_move = chess_utils.action_to_move(self.board, action, current_index)
         assert chosen_move in self.game.board.legal_moves
         self.game.board.push(chosen_move)
 
