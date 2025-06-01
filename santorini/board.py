@@ -2,9 +2,9 @@
 from collections import defaultdict
 from itertools import product
 import numpy as np
-from santorini.player import Worker
-from santorini import utils
-from santorini.config import GRID_SIZE, MAX_BUILDING_HEIGHT
+from player import Worker
+import utils
+from config import GRID_SIZE, MAX_BUILDING_HEIGHT
 
 class Board:
     """Board class to handle the game board, buildings, board state, and displaying the board."""
@@ -123,7 +123,7 @@ class Board:
         Returns an array-based representation of the board state
         shape=(5,5,3)
         channel 1: building height
-        channel 2: which player occupies each cell (or -1 if empty)
+        channel 2: which player's piece occupies each cell. 0 for player 1, 1 for player2, -1 if empty.
         channel 3: Who is the turn player? All zeros for first player's turn, all ones for second player's turn.
         """
         obs = np.empty((self._grid_size, self._grid_size, 3))

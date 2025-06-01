@@ -1,5 +1,5 @@
 """Utility functions"""
-from santorini.config import GRID_SIZE
+from config import GRID_SIZE
 
 def is_adjacent(position1: tuple[int, int], position2: tuple[int, int]) -> bool:
     """

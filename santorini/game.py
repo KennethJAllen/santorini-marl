@@ -1,9 +1,9 @@
 """Main Santorini game state logic"""
 import enum
-from santorini.board import Board
-from santorini.player import Player, Worker
-from santorini import utils
-from santorini.config import NUM_WORKERS
+from board import Board
+from player import Player, Worker
+import utils
+from config import NUM_WORKERS
 
 class GameState(enum.Enum):
     """Encodes finite game states."""

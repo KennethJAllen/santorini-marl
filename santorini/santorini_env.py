@@ -4,8 +4,7 @@ import gymnasium
 from gymnasium import spaces
 from pettingzoo import AECEnv
 from pettingzoo.utils.agent_selector import AgentSelector
-
-from santorini.game import Game, GameState
+from game import Game, GameState
 
 def env(**kwargs):
     santorini_env = SantoriniEnv(**kwargs)
@@ -32,19 +31,19 @@ class SantoriniEnv(AECEnv):
         self.num_players = num_players
 
         self.agents = [f"player_{i}" for i in range(num_players)]
+        self.possible_agents = self.agents[:]
         self.agent_to_idx = {
             agent: idx for idx, agent in enumerate(self.possible_agents)
         }
-        self.possible_agents = self.agents[:]
 
         self._agent_selector = AgentSelector(self.agents)
 
-        self.action_spaces = {name: spaces.Discrete(2 * 25 * 25) for name in self.agents}
+        self.action_spaces = {name: spaces.Box(low=0, high=4, shape = (2, 25, 25)) for name in self.agents}
         self.observation_spaces = {
                     name: spaces.Dict(
                         {
                             "observation": spaces.Box(
-                                low=0, high=4, shape=(5, 5, 3), dtype=bool
+                                low=0, high=4, shape=(5, 5, 3), dtype=np.int8
                             ),
                             "action_mask": spaces.Box(
                                 low=0, high=4, shape=(2, 25, 25), dtype=np.int8
@@ -59,7 +58,6 @@ class SantoriniEnv(AECEnv):
         self.truncations = {name: False for name in self.agents}
         self.terminations = {name: False for name in self.agents}
         self.agent_selection = None
-
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -111,18 +109,11 @@ class SantoriniEnv(AECEnv):
         return {"observation": observation, "action_mask": action_mask}
 
     def step(self, action):
-        if (
-            self.terminations[self.agent_selection]
-            or self.truncations[self.agent_selection]
-        ):
+        if self.terminations[self.agent_selection] or self.truncations[self.agent_selection]:
             return self._was_dead_step(action)
         current_agent = self.agent_selection
         current_index = self.agents.index(current_agent)
 
-        # Cast action into int
-        action = int(action)
-
-        chosen_move = chess_utils.action_to_move(self.board, action, current_index)
         assert chosen_move in self.game.board.legal_moves
         self.game.board.push(chosen_move)
 
@@ -164,3 +155,8 @@ class SantoriniEnv(AECEnv):
             raise ValueError(
                 f"{self.render_mode} is not a valid render mode. Available modes are: {self.metadata['render_modes']}"
             )
+
+
+if __name__ == "__main__":
+    my_env = env()
+    print(my_env)
