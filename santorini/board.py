@@ -17,8 +17,8 @@ class Board:
         _max_building_height: The maximum height of a non-capped building. Default 3.
         _select: The space the current player has selected.
         """
-        self._grid_size = grid_size
-        self._max_building_height = max_building_height
+        self.grid_size = grid_size
+        self.max_building_height = max_building_height
 
         # board state stored as a dict:
         # key: tuple of integers (x,y) representing location on the board
@@ -34,19 +34,19 @@ class Board:
         lines = []
 
         # Build header with column indices.
-        header = "    " + "".join(f"{col:^7}" for col in range(self._grid_size))
+        header = "    " + "".join(f"{col:^7}" for col in range(self.grid_size))
         lines.append(header)
 
-        for row in range(self._grid_size):
+        for row in range(self.grid_size):
             # Start each row with the row label.
             row_line = f"{row:<3}"
-            for col in range(self._grid_size):
+            for col in range(self.grid_size):
                 position = (row, col)
                 worker = self.get_position_worker(position)
                 height = self.get_position_height(position)
 
                 # Represent capped space with "∞" if needed.
-                height_str = "∞" if height > self._max_building_height else str(height)
+                height_str = "∞" if height > self.max_building_height else str(height)
 
                 if worker:
                     cell_str = f"{worker}-H{height_str}"
@@ -61,14 +61,6 @@ class Board:
         lines.append("")
         return "\n".join(lines)
 
-    def get_grid_size(self) -> int:
-        """
-        Returns the grid size.
-        The board is two dimensional, with each dimension equal to the grid size.
-        For example, if the grid size is 5, the dimensions of the board is 5 x 5.
-        """
-        return self._grid_size
-
     def move_worker(self, worker: Worker, target_position: tuple[int, int]) -> bool:
         """
         Moves a worker to new_position.
@@ -79,7 +71,7 @@ class Board:
         worker_position = worker.get_position()
         self._set_position_worker(worker_position, Worker()) # default worker represents no worker
         self._set_position_worker(target_position, worker)
-        did_move_win = self.get_position_height(target_position) == self._max_building_height
+        did_move_win = self.get_position_height(target_position) == self.max_building_height
         return did_move_win
 
     def build(self, build_position: tuple[int, int])  -> None:
@@ -96,7 +88,7 @@ class Board:
     def get_valid_placement_actions(self) -> set[int]:
         """Gets all valid_locations where a worker can be placed"""
         valid_actions = set()
-        for i, j in product(range(self._grid_size), range(self._grid_size)):
+        for i, j in product(range(self.grid_size), range(self.grid_size)):
             if not self.get_position_worker((i, j)):
                 action = utils.space_position_to_index((i, j))
                 valid_actions.add(action)
@@ -126,8 +118,8 @@ class Board:
         channel 2: which player's piece occupies each cell. 0 for player 1, 1 for player2, -1 if empty.
         channel 3: Who is the turn player? All zeros for first player's turn, all ones for second player's turn.
         """
-        obs = np.empty((self._grid_size, self._grid_size, 3))
-        for i, j in product(range(self._grid_size), range(self._grid_size)):
+        obs = np.empty((self.grid_size, self.grid_size, 3))
+        for i, j in product(range(self.grid_size), range(self.grid_size)):
             # channel 1
             obs[i, j, 0] = self.get_position_height((i, j))
 
@@ -172,9 +164,9 @@ class Board:
         """
         valid_positions = []
         # If the move would result in a win, can "build" anywhere
-        if self.get_position_height(position) == self._max_building_height:
-            for row in range(self._grid_size):
-                for col in range(self._grid_size):
+        if self.get_position_height(position) == self.max_building_height:
+            for row in range(self.grid_size):
+                for col in range(self.grid_size):
                     target_position = (row, col)
                     valid_positions.append(target_position)
             return valid_positions
@@ -191,7 +183,7 @@ class Board:
                 continue
             # Check if target position is capped
             position_height = self.get_position_height(target_position)
-            if position_height == self._max_building_height + 1:
+            if position_height == self.max_building_height + 1:
                 continue
             # Check if there is a different worker on the target position
             target_position_worker = self.get_position_worker(target_position)
@@ -242,6 +234,6 @@ class Board:
     def _is_on_board(self, position: tuple[int, int]) -> bool:
         """Returns true if position is on the board. Returns false otherwise."""
         x, y = position
-        if 0 <= x < self._grid_size and 0 <= y < self._grid_size:
+        if 0 <= x < self.grid_size and 0 <= y < self.grid_size:
             return True
         return False

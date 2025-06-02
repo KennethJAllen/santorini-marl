@@ -59,6 +59,20 @@ class Game:
             raise ValueError("Cannot get the current player. Players are not initialized.")
         return self.players[self._current_player_index]
 
+    def get_valid_actions(self) -> set[tuple[int, int, int]]:
+        """
+        Returns a set of valid actions for the current player.
+        An action is of the form (worker_id, move_index, build_index).
+        """
+        if self.state == GameState.PLAYER_SELECT:
+            return {2, 3}  # Valid actions are the number of players
+        elif self.state == GameState.SETUP:
+            return self.board.get_valid_placement_actions()
+        elif self.state == GameState.PLAYING:
+            return self.current_player().get_valid_actions()
+        else:
+            raise ValueError(f"Cannot get valid actions in state: {self.state}")
+
     def _handle_player_select(self, action: int) -> None:
         """Action is the number of players chosen."""
         valid_actions = [2, 3]

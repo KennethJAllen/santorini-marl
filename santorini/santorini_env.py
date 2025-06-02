@@ -6,7 +6,7 @@ from pettingzoo import AECEnv
 from pettingzoo.utils.agent_selector import AgentSelector
 from game import Game, GameState
 
-def env(**kwargs):
+def santorini_env(**kwargs):
     santorini_env = SantoriniEnv(**kwargs)
     #santorini_env = wrappers.TerminateIllegalWrapper(santorini_env, illegal_reward=-1)
     #santorini_env = wrappers.AssertOutOfBoundsWrapper(santorini_env)
@@ -114,26 +114,20 @@ class SantoriniEnv(AECEnv):
         current_agent = self.agent_selection
         current_index = self.agents.index(current_agent)
 
-        chosen_move = chess_utils.action_to_move(self.board, action, current_index)
-        assert chosen_move in self.game.board.legal_moves
-        self.game.board.push(chosen_move)
+        assert action in self.game.get_valid_actions()
 
-        next_legal_moves = chess_utils.legal_moves(self.game.board)
+        self.game.step(action)
 
         game_over = self.game.is_done()
 
         if game_over:
-            result_val = chess_utils.result_to_int(result)
+            result_val = 1 if self.game.winner == self.game.players[0] else -1
             self.set_game_result(result_val)
 
         self._accumulate_rewards()
 
-        # Update board after applying action
-        next_board = self.game.get_observation(self.board, player=0)
-
-        self.agent_selection = (
-            self._agent_selector.next()
-        )  # Give turn to the next agent
+        # Give turn to the next agent
+        self.agent_selection = self._agent_selector.next()
 
         if self.render_mode == "human":
             self.render()
@@ -157,7 +151,25 @@ class SantoriniEnv(AECEnv):
                 f"{self.render_mode} is not a valid render mode. Available modes are: {self.metadata['render_modes']}"
             )
 
+    def set_game_result(self, result_val):
+            for i, name in enumerate(self.agents):
+                self.terminations[name] = True
+                result_coef = 1 if i == 0 else -1
+                self.rewards[name] = result_val * result_coef
+                self.infos[name] = {"legal_moves": []}
 
 if __name__ == "__main__":
-    my_env = env()
-    print(my_env)
+    env = santorini_env()
+    env.reset(seed=42)
+
+    for agent in env.agent_iter():
+        observation, reward, termination, truncation, info = env.last()
+
+        if termination or truncation:
+            action = None
+        else:
+            # this is where you would insert your policy
+            action = env.action_space(agent).sample()
+
+        env.step(action)
+    env.close()
