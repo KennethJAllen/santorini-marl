@@ -65,5 +65,5 @@ def fixture_board_populated(worker_a1, worker_a2, worker_b1, worker_b2, worker_e
                               (4,3): [worker_empty, 3],
                               (1,0): [worker_empty, 4]})
     board = Board()
-    board._set_state(state_data)
+    board._state = state_data
     return board

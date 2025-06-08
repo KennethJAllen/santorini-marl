@@ -43,7 +43,7 @@ class Board:
             for col in range(self.grid_size):
                 position = (row, col)
                 worker = self.get_position_worker(position)
-                height = self.get_position_height(position)
+                height = self.get_height(position)
 
                 # Represent capped space with "∞" if needed.
                 height_str = "∞" if height > self.max_building_height else str(height)
@@ -71,7 +71,7 @@ class Board:
         worker = self.get_position_worker(worker_position)
         self._set_position_worker(worker_position, Worker()) # Worker with no args represents no worker.
         self._set_position_worker(target_position, worker)
-        did_move_win = self.get_position_height(target_position) == self.max_building_height
+        did_move_win = self.get_height(target_position) == self.max_building_height
         return did_move_win
 
     def build(self, build_position: tuple[int, int])  -> None:
@@ -120,7 +120,7 @@ class Board:
         obs = np.empty((self.grid_size, self.grid_size, 3))
         for i, j in product(range(self.grid_size), range(self.grid_size)):
             # channel 1
-            obs[i, j, 0] = self.get_position_height((i, j))
+            obs[i, j, 0] = self.get_height((i, j))
 
             # channel 2
             player = self.get_position_worker((i, j)).get_player()
@@ -136,7 +136,7 @@ class Board:
         """Returns the worker in the given position."""
         return self._state[position][0]
 
-    def get_position_height(self, position: tuple[int, int]) -> int:
+    def get_height(self, position: tuple[int, int]) -> int:
         """Returns the building height at the given position.
         If the position is capped, returns max height + 1."""
         return self._state[position][1]
@@ -161,35 +161,36 @@ class Board:
         It is important to track which worker moved to the given position,
         because if a worker moves they can build on their previously occupied space.
         """
-        valid_positions = []
-        # If the move would result in a win, can "build" anywhere
-        if self.get_position_height(position) == self.max_building_height:
+        build_positions = []
+        # If the move would result in a win, can "build" anywhere on the board
+        if self.get_height(position) == self.max_building_height:
             for row in range(self.grid_size):
                 for col in range(self.grid_size):
-                    target_position = (row, col)
-                    valid_positions.append(target_position)
-            return valid_positions
+                    build_position = (row, col)
+                    build_positions.append(build_position)
+            return build_positions
 
         x, y = position
         # check all adjacent positions for valid builds
         for i, j in product(range(-1,2), range(-1,2)):
-            target_position = x + i, y + j
+            build_position = x + i, y + j
             # Must build on board
-            if not self._is_on_board(position):
+            if not self._is_on_board(build_position):
                 continue
             # Can't build on current position
-            if target_position == position:
+            # Equivalent to when i = j = 0
+            if build_position == position:
                 continue
             # Check if target position is capped
-            position_height = self.get_position_height(target_position)
+            position_height = self.get_height(build_position)
             if position_height == self.max_building_height + 1:
                 continue
             # Check if there is a different worker on the target position
-            target_position_worker = self.get_position_worker(target_position)
+            target_position_worker = self.get_position_worker(build_position)
             if target_position_worker and not (target_position_worker is worker):
                 continue
-            valid_positions.append(target_position)
-        return valid_positions
+            build_positions.append(build_position)
+        return build_positions
 
     def _set_position_worker(self, position: tuple[int, int], worker: Worker) -> None:
         """Sets the given worker on the given position."""
@@ -223,8 +224,8 @@ class Board:
             # and there is a worker on the worker_position
             return False
 
-        current_height = self.get_position_height(worker_position)
-        target_height = self.get_position_height(target_position)
+        current_height = self.get_height(worker_position)
+        target_height = self.get_height(target_position)
         if target_height > current_height + 1:
             # check target_height is at most 1 more than current_height
             return False

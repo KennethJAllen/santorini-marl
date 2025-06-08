@@ -27,7 +27,7 @@ class Worker:
             return NotImplemented
         return self._player is other._player and self._id == other._id
 
-    def __repr__(self):
+    def __str__(self):
         """Show the player and worker ID
         e.g. "P1W0-H1" => "Player 1's Worker 0"""
         if self._player is None or self._id is None:
@@ -64,7 +64,7 @@ class Player:
     def __bool__(self):
         return False if self._id is None else True
 
-    def __repr__(self):
+    def __str__(self):
         if self._id is None:
             return ""
         return f"Player {self._id}"

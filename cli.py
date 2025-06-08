@@ -2,7 +2,7 @@
 from santorini.game import Game, GameState
 from santorini import utils
 
-def run_cli():
+def main():
     """Runs the command line interface"""
     game = Game()
     # Main loop
@@ -67,4 +67,4 @@ def run_cli():
             break
 
 if __name__ == "__main__":
-    run_cli()
+    main()

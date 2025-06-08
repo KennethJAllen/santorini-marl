@@ -45,8 +45,7 @@ class Game:
         elif self.state == GameState.PLAYING:
             self._handle_turn(action)
         elif self.state == GameState.GAME_OVER:
-            # Game over: No actions can be taken
-            pass
+            print("Game over: No actions can be taken")
         else:
             raise ValueError(f"State not handles by 'update_game': {self.state}")
 
