@@ -45,18 +45,17 @@ def run_cli():
             # The game is in normal play. We expect an action like (worker_id, move_index, build_index).
             print(f"{game.current_player()} turn. Input (worker_id, move_index, build_index).")
             try:
-                w_id_str = input("Enter worker_id: ")
-                worker_id = int(w_id_str)
+                worker_id_str = input("Enter worker_id: ")
+                worker_id = int(worker_id_str)
+                move_from = game.current_player().get_worker(worker_id).get_position()
 
-                m_str = input("Enter the move as comma separated row, col: ")
-                m_row, m_col = tuple(map(int, m_str.split(','))) # split move string
-                move_index = utils.space_position_to_index((m_row, m_col))
+                move_to_str = input("Enter the move as comma separated row, col: ")
+                move_to = tuple(map(int, move_to_str.split(','))) # split move string
 
                 b_str = input("Enter the build as separated row, col: ")
-                b_row, b_col = tuple(map(int, b_str.split(','))) # split build string
-                build_index = utils.space_position_to_index((b_row, b_col))
+                build_on = tuple(map(int, b_str.split(','))) # split build string
 
-                action = (worker_id, move_index, build_index)
+                action = utils.encode_action((move_from, move_to, build_on))
                 game.step(action)
             except ValueError as e:
                 print(f"Invalid input: {e}")

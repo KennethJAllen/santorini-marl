@@ -3,15 +3,19 @@ import numpy as np
 import gymnasium
 from gymnasium import spaces
 from pettingzoo import AECEnv
+from pettingzoo.utils import wrappers
 from pettingzoo.utils.agent_selector import AgentSelector
-from game import Game, GameState
+from santorini.game import Game
 
 def santorini_env(**kwargs):
-    santorini_env = SantoriniEnv(**kwargs)
-    #santorini_env = wrappers.TerminateIllegalWrapper(santorini_env, illegal_reward=-1)
-    #santorini_env = wrappers.AssertOutOfBoundsWrapper(santorini_env)
-    #santorini_env = wrappers.OrderEnforcingWrapper(santorini_env)
-    return santorini_env
+    env = SantoriniEnv(**kwargs)
+    # enforce the AEC API calls
+    env = wrappers.OrderEnforcingWrapper(env)
+    # catch out-of-bounds ints
+    env = wrappers.AssertOutOfBoundsWrapper(env)
+    # handle in-bounds but “illegal” game moves
+    env = wrappers.TerminateIllegalWrapper(env, illegal_reward=-1)
+    return env
 
 class SantoriniEnv(AECEnv):
     """
@@ -38,7 +42,7 @@ class SantoriniEnv(AECEnv):
 
         self._agent_selector = AgentSelector(self.agents)
 
-        self.action_spaces = {name: spaces.Box(low=0, high=4, shape = (2, 25, 25)) for name in self.agents}
+        self.action_spaces = {name: spaces.Discrete(5 * 5 * 8 * 8) for name in self.agents}
         self.observation_spaces = {
                     name: spaces.Dict(
                         {
@@ -46,7 +50,7 @@ class SantoriniEnv(AECEnv):
                                 low=0, high=4, shape=(5, 5, 3), dtype=np.int8
                             ),
                             "action_mask": spaces.Box(
-                                low=0, high=4, shape=(2, 25, 25), dtype=np.int8
+                                low=0, high=1, shape=(1600,), dtype=np.int8 # 1600=5*5*8*8
                             ),
                         }
                     )
@@ -98,11 +102,9 @@ class SantoriniEnv(AECEnv):
         current_index = self.agent_to_idx[agent]
         observation = self.game.board.get_observation(current_index)
 
-        legal_moves = (
-            self.game.players[current_index].get_valid_actions() if agent == self.agent_selection else []
-            )
+        legal_moves = self.game.valid_actions if agent == self.agent_selection else set()
 
-        action_mask = np.zeros(2 * 25 * 25, "int8")
+        action_mask = np.zeros(5 * 5 * 8 * 8, "int8")
         for i in legal_moves:
             action_mask[i] = 1
 
@@ -111,10 +113,6 @@ class SantoriniEnv(AECEnv):
     def step(self, action):
         if self.terminations[self.agent_selection] or self.truncations[self.agent_selection]:
             return self._was_dead_step(action)
-        current_agent = self.agent_selection
-        current_index = self.agents.index(current_agent)
-
-        assert action in self.game.get_valid_actions()
 
         self.game.step(action)
 
@@ -140,7 +138,7 @@ class SantoriniEnv(AECEnv):
         """
         if self.render_mode is None:
             gymnasium.logger.warn(
-                "You are calling render method without specifying any render mode."
+"You are calling render method without specifying any render mode."
             )
         elif self.render_mode == "ansi":
             return str(self.game.board)
@@ -148,7 +146,8 @@ class SantoriniEnv(AECEnv):
             raise NotImplementedError
         else:
             raise ValueError(
-                f"{self.render_mode} is not a valid render mode. Available modes are: {self.metadata['render_modes']}"
+                (f"{self.render_mode} is not a valid render mode. "
+                 f"Available modes are: {self.metadata['render_modes']}")
             )
 
     def set_game_result(self, result_val):
@@ -160,7 +159,7 @@ class SantoriniEnv(AECEnv):
 
 if __name__ == "__main__":
     env = santorini_env()
-    env.reset(seed=42)
+    env.reset()
 
     for agent in env.agent_iter():
         observation, reward, termination, truncation, info = env.last()
@@ -168,7 +167,6 @@ if __name__ == "__main__":
         if termination or truncation:
             action = None
         else:
-            # this is where you would insert your policy
             action = env.action_space(agent).sample()
 
         env.step(action)

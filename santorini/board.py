@@ -2,9 +2,9 @@
 from collections import defaultdict
 from itertools import product
 import numpy as np
-from player import Worker
-import utils
-from config import GRID_SIZE, MAX_BUILDING_HEIGHT
+from santorini.player import Worker
+from santorini import utils
+from santorini.config import GRID_SIZE, MAX_BUILDING_HEIGHT
 
 class Board:
     """Board class to handle the game board, buildings, board state, and displaying the board."""
@@ -61,15 +61,15 @@ class Board:
         lines.append("")
         return "\n".join(lines)
 
-    def move_worker(self, worker: Worker, target_position: tuple[int, int]) -> bool:
+    def move_worker(self, worker_position: tuple[int, int], target_position: tuple[int, int]) -> bool:
         """
         Moves a worker to new_position.
         worker: A Worker to move.
         new_position: A tuple (x, y) indicating the new position to move the worker to.
         Returns True if the move was to a winning height, False otherwise.
         """
-        worker_position = worker.get_position()
-        self._set_position_worker(worker_position, Worker()) # default worker represents no worker
+        worker = self.get_position_worker(worker_position)
+        self._set_position_worker(worker_position, Worker()) # Worker with no args represents no worker.
         self._set_position_worker(target_position, worker)
         did_move_win = self.get_position_height(target_position) == self.max_building_height
         return did_move_win
@@ -94,20 +94,19 @@ class Board:
                 valid_actions.add(action)
         return valid_actions
 
-    def get_valid_worker_actions(self, worker: Worker) -> set[tuple[int, int, int]]:
+    def get_valid_worker_actions(self, worker: Worker) -> set[int]:
         """
         Updates all valid actions the player can take.
-        An action is of the form (worker_id, move_index, build_index).
+        An action is an integer from 0 to 5*5*8*8.
         If a move will win the game (by moving a piece to a height 3 building), the build index is arbitrary.
         """
         valid_actions = set()
         worker_position = worker.get_position()
         valid_moves = self._get_valid_moves_from_position(worker_position)
         for move_position in valid_moves:
-            for build in self._valid_move_then_build_positions(worker, move_position):
-                move_index = utils.space_position_to_index(move_position)
-                build_index = utils.space_position_to_index(build)
-                valid_actions.add((worker.get_id(), move_index, build_index))
+            for build_position in self._valid_move_then_build_positions(worker, move_position):
+                action = utils.encode_action((worker_position, move_position, build_position))
+                valid_actions.add(action)
         return valid_actions
 
     def get_observation(self, current_player_index) -> np.ndarray:

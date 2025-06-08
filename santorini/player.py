@@ -17,8 +17,6 @@ class Worker:
         self._id: int = worker_id
         self._player: Player = player
         self._position: tuple[int, int] = None
-        # All valid actions positions which consists of (worker_id, move_index, build_index)
-        self._valid_actions: set[tuple[int, int, int]] = None
 
     def __bool__(self):
         return bool(self._player or self._id)
@@ -52,20 +50,11 @@ class Worker:
         """Get the worker position."""
         return self._position
 
-    def set_valid_moves(self, valid_moves: set[tuple[int,int]]) -> None:
-        """Set the valid moves for the worker."""
-        self._valid_actions = valid_moves
-
-    def get_valid_moves(self) -> set[tuple[int,int]]:
-        """Get the valid moves for this worker."""
-        return self._valid_actions
-
 class Player:
     """Player class to manage player actions and workers."""
 
     def __init__(self, player_id: int = None, workers: list[Worker] = None):
         self._id = player_id
-        self._valid_actions = set()
         # set of workers
         if workers is None:
             self._workers = []
@@ -83,14 +72,6 @@ class Player:
     def get_id(self):
         """Reutnrs the id corresponding to the player."""
         return self._id
-
-    def set_valid_actions(self, valid_actions: set[tuple[int,int,int]]) -> None:
-        """Sets the player's valid actions to new valid actions."""
-        self._valid_actions = valid_actions
-
-    def get_valid_actions(self) -> set[tuple[int, int, int]]:
-        """Returns all the valid actions the player has availible."""
-        return self._valid_actions
 
     def add_worker(self, worker: Worker) -> None:
         """Adds a worker to the list of workers."""
