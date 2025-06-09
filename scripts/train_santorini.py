@@ -9,8 +9,7 @@ For more information about invalid action masking in SB3, see https://sb3-contri
 Original author: Elliot (https://github.com/elliottower)
 """
 
-import glob
-import os
+from pathlib import Path
 import time
 
 import gymnasium as gym
@@ -79,7 +78,7 @@ def mask_fn(env):
     return env.action_mask()
 
 
-def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
+def train_action_mask(env_fn, model_dir: Path, steps=10_000, seed=0, **env_kwargs):
     """Train a single model to play as each agent in a zero-sum game environment using invalid action masking."""
     env = env_fn(**env_kwargs)
 
@@ -99,7 +98,7 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
     model.set_random_seed(seed)
     model.learn(total_timesteps=steps)
 
-    save_path = f"{env.unwrapped.metadata.get('name')}_{time.strftime('%Y%m%d-%H%M%S')}"
+    save_path = model_dir / f"{env.unwrapped.metadata.get('name')}_{time.strftime('%Y%m%d-%H%M%S')}"
     model.save(save_path)
 
     print(f"Model has been saved to {save_path}")
@@ -109,7 +108,7 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
     env.close()
 
 
-def eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs):
+def eval_action_mask(env_fn, model_dir: Path, num_games: int=100, render_mode:str=None, **env_kwargs):
     # Evaluate a trained agent vs a random agent
     env = env_fn(render_mode=render_mode, **env_kwargs)
 
@@ -118,12 +117,14 @@ def eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs):
     )
 
     try:
+        env_name = env.metadata["name"]
         latest_policy = max(
-            glob.glob(f"{env.metadata['name']}*.zip"), key=os.path.getctime
-        )
+            model_dir.glob(f"{env_name}*.zip"),
+            key=lambda p: p.stat().st_ctime,   # creation time
+            )
     except ValueError:
         print("Policy not found.")
-        exit(0)
+        return
 
     model = MaskablePPO.load(latest_policy)
 
@@ -183,19 +184,19 @@ def eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs):
 
 def main():
     env_fn = santorini_env
-
     env_kwargs = {}
-
+    model_dir = Path.cwd() / "models"
+    model_dir.mkdir(exist_ok=True)
 
     # Train a model against itself
-    num_steps = 80_000
-    train_action_mask(env_fn, steps=num_steps, seed=0, **env_kwargs)
+    num_steps = 200_000
+    train_action_mask(env_fn, model_dir, steps=num_steps, seed=0, **env_kwargs)
 
-    # Evaluate 100 games against a random agent
-    eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs)
+    # Evaluate 1000 games against a random agent
+    eval_action_mask(env_fn, model_dir, num_games=1000, render_mode=None, **env_kwargs)
 
     # Watch two games vs a random agent
-    eval_action_mask(env_fn, num_games=2, render_mode="ansi", **env_kwargs)
+    eval_action_mask(env_fn, model_dir, num_games=2, render_mode="ansi", **env_kwargs)
 
 
 if __name__ == "__main__":
