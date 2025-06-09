@@ -119,16 +119,16 @@ def encode_action(move_build_tuple: tuple[tuple[int, int]], grid_size: int = GRI
     dy_move = to_y   - from_y
     try:
         move_dir = dirs.index((dx_move, dy_move))
-    except ValueError:
-        raise ValueError(f"Invalid move direction {(dx_move, dy_move)}; must be one of {dirs}")
+    except ValueError as e:
+        raise ValueError(f"Invalid move direction {(dx_move, dy_move)}; must be one of {dirs}") from e
 
     # compute build direction
     dx_build = build_x - to_x
     dy_build = build_y - to_y
     try:
         build_dir = dirs.index((dx_build, dy_build))
-    except ValueError:
-        raise ValueError(f"Invalid build direction {(dx_build, dy_build)}; must be one of {dirs}")
+    except ValueError as e:
+        raise ValueError(f"Invalid build direction {(dx_build, dy_build)}; must be one of {dirs}") from e
 
     # linearize from-square
     from_idx = from_x + from_y * grid_size

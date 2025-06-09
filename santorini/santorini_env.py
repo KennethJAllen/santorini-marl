@@ -137,9 +137,7 @@ class SantoriniEnv(AECEnv):
         human or rgb_array for gui
         """
         if self.render_mode is None:
-            gymnasium.logger.warn(
-"You are calling render method without specifying any render mode."
-            )
+            gymnasium.logger.warn("You are calling render method without specifying any render mode.")
         elif self.render_mode == "ansi":
             return str(self.game.board)
         elif self.render_mode in {"human", "rgb_array"}:
@@ -151,13 +149,13 @@ class SantoriniEnv(AECEnv):
             )
 
     def set_game_result(self, result_val):
-            for i, name in enumerate(self.agents):
-                self.terminations[name] = True
-                result_coef = 1 if i == 0 else -1
-                self.rewards[name] = result_val * result_coef
-                self.infos[name] = {"legal_moves": []}
+        for i, name in enumerate(self.agents):
+            self.terminations[name] = True
+            result_coef = 1 if i == 0 else -1
+            self.rewards[name] = result_val * result_coef
+            self.infos[name] = {"legal_moves": []}
 
-if __name__ == "__main__":
+def main():
     env = santorini_env()
     env.reset()
 
@@ -171,3 +169,6 @@ if __name__ == "__main__":
 
         env.step(action)
     env.close()
+
+if __name__ == "__main__":
+    main()

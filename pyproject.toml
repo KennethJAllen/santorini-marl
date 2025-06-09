@@ -18,3 +18,9 @@ cli = "cli:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "sb3-contrib>=2.6.0",
+    "supersuit>=3.10.0",
+]

@@ -162,14 +162,6 @@ class Board:
         because if a worker moves they can build on their previously occupied space.
         """
         build_positions = []
-        # If the move would result in a win, can "build" anywhere on the board
-        if self.get_height(position) == self.max_building_height:
-            for row in range(self.grid_size):
-                for col in range(self.grid_size):
-                    build_position = (row, col)
-                    build_positions.append(build_position)
-            return build_positions
-
         x, y = position
         # check all adjacent positions for valid builds
         for i, j in product(range(-1,2), range(-1,2)):
@@ -181,6 +173,10 @@ class Board:
             # Equivalent to when i = j = 0
             if build_position == position:
                 continue
+            # If the move would result in a win, can "build" on any adjacent position
+            if self.get_height(position) == self.max_building_height:
+                build_positions.append(build_position)
+                continue
             # Check if target position is capped
             position_height = self.get_height(build_position)
             if position_height == self.max_building_height + 1:
@@ -189,6 +185,7 @@ class Board:
             target_position_worker = self.get_position_worker(build_position)
             if target_position_worker and not (target_position_worker is worker):
                 continue
+
             build_positions.append(build_position)
         return build_positions
 

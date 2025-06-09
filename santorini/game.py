@@ -26,9 +26,10 @@ class Game:
     def reset(self) -> None:
         """Sets the board back to start."""
         self.board = Board()
+        self.state = GameState.PLAYER_SELECT
+        self.valid_actions = {2, 3}
         self.players = []
         self._current_player_index = 0
-        self.state = GameState.PLAYER_SELECT
         self.winner = None # the winner of the game
 
     def step(self, action: int) -> None:
@@ -49,15 +50,19 @@ class Game:
         else:
             raise ValueError(f"State not handles by 'update_game': {self.state}")
 
-        # Update the valid actions for the next player
-        self._update_valid_actions()
-        if not self.valid_actions: # if next player has no valid moves
-            # TODO: fix this logic for 3 players.
-            # If a player has no valid moves, their pieces should be removed from the game.
-            # Then, if there is 1 player left, the winner should be declared.
-            previous_player_index = (self._current_player_index - 1) % len(self.players)
-            self.winner = self.players[previous_player_index]
-            self.state = GameState.GAME_OVER
+        if self.state == GameState.GAME_OVER:
+            self.valid_actions = set()  # No valid actions when the game is over
+        else:
+            # Update the valid actions for the next player
+            self._update_valid_actions()
+            # Check if the next player has no valid moves
+            if not self.valid_actions:
+                # TODO: fix this logic for 3 players.
+                # If a player has no valid moves, their pieces should be removed from the game.
+                # Then, if there is 1 player left, the winner should be declared.
+                previous_player_index = (self._current_player_index - 1) % len(self.players)
+                self.winner = self.players[previous_player_index]
+                self.state = GameState.GAME_OVER
 
     def is_done(self) -> bool:
         """True if game is over, false otherwise."""
@@ -72,7 +77,7 @@ class Game:
     def _handle_player_select(self, action: int) -> None:
         """Action is the number of players chosen."""
         if action not in self.valid_actions:
-            raise ValueError(f"Number of players must be one of {', '.join(map(str,self.valid_actions()))}. Instead got: {action}")
+            raise ValueError(f"Number of players must be one of {', '.join(map(str,self.valid_actions))}. Instead got: {action}")
         num_players = action
         self._init_players(num_players)
         self.state = GameState.SETUP
