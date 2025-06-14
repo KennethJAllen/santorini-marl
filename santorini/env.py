@@ -47,7 +47,7 @@ class SantoriniEnv(AECEnv):
                     name: spaces.Dict(
                         {
                             "observation": spaces.Box(
-                                low=0, high=4, shape=(5, 5, 3), dtype=np.int8
+                                low=0, high=4, shape=(5, 5, 7), dtype=np.int8
                             ),
                             "action_mask": spaces.Box(
                                 low=0, high=1, shape=(1600,), dtype=np.int8 # 1600=5*5*8*8

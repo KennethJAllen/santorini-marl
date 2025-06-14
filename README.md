@@ -45,7 +45,7 @@ An action is a discrete integer from $0$ to $1600 = 5 \times 5 \times 8 \times 8
 
 ### Observation Space
 
-The observation space is a $5 \times 5$ grid representing the board with 3 channels:
+The observation space is a $5 \times 5$ grid representing the board with 6 channels:
 
 - Channel 0:
     - Position height
@@ -56,6 +56,10 @@ The observation space is a $5 \times 5$ grid representing the board with 3 chann
 - Channel 2:
     - All 0 for first player's turn
     - All 1 for second player's turn
+
+#### Symmetries
+Santorini has 8-fold dihedral symmetry, meaning it can be rotated in 4 directions or flipped in 4 directions and the board state would be equivalent.
+
 ## Credits
 
 Python WebAssembly by Pygbag.

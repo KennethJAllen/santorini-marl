@@ -111,25 +111,41 @@ class Board:
 
     def get_observation(self, current_player_index) -> np.ndarray:
         """
-        Returns an array-based representation of the board state
-        shape=(5,5,3)
-        channel 1: building height
-        channel 2: which player's piece occupies each cell. 0 for player 1, 1 for player2, -1 if empty.
-        channel 3: Who is the turn player? All zeros for first player's turn, all ones for second player's turn.
-        """
-        obs = np.empty((self.grid_size, self.grid_size, 3))
-        for i, j in product(range(self.grid_size), range(self.grid_size)):
-            # channel 1
-            obs[i, j, 0] = self.get_height((i, j))
+        Returns an array-based representation of the board state.
+        The board is represented by 7 binary channels,
+        each of size grid_size x grid_size (typically 5x5).
 
-            # channel 2
+        channel 0-4: building heights.
+            - 0: 1 nothing if no building, else 0
+            - 1: 1 for height 1, else 0
+            - 2: 1 for height 2, else 0
+            - 3: 1 for height 3, else 0
+            - 4: 1 if capped, else 0
+            (max building height greater than 3 is not supported by this function)
+        channel 5-6: which player's piece occupies each cell.
+            - 5: 1 if the turn player occupies the cell, else 0
+            - 6: 1 if the other player occupies the cell, else 0
+
+        WARNING: This function assumes that the game is played with 2 players.
+        """
+        obs = np.zeros((self.grid_size, self.grid_size, 7), dtype=bool)
+        # iterate through each position on the board
+        for i, j in product(range(self.grid_size), range(self.grid_size)):
+            height = self.get_height((i, j))
+            # channels 0-4:
+            # Just set the channel corresponding to the height to 1
+            # because default is 0 and channel i corresponds to height i.
+            obs[i, j, height] = 1
+            # channel 5-6:
             player = self.get_position_worker((i, j)).get_player()
             if player is None:
-                obs[i, j, 1] = 0
+                continue
+            if player.get_id() == current_player_index:
+                # channel 5: current player
+                obs[i, j, 5] = 1
             else:
-                obs[i, j, 1] = player.get_id() + 1
-        # channel 3
-        obs[:, :, 2] = current_player_index
+                # channel 6: other player
+                obs[i, j, 6] = 1
         return obs
 
     def get_position_worker(self, position: tuple[int, int]) -> Worker:
