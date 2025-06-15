@@ -20,7 +20,7 @@ class Game:
         self.valid_actions: set[int] = {2, 3}
         self._num_workers: int = num_workers
         self.players: list[Player] = [] # List of Player objects participating in the game
-        self._current_player_index: int = 0  # Index to keep track of whose turn it is
+        self.current_player_idx: int = 0  # Index to keep track of whose turn it is
         self.winner: Player | None = None # the winner of the game
 
     def reset(self) -> None:
@@ -29,7 +29,7 @@ class Game:
         self.state = GameState.PLAYER_SELECT
         self.valid_actions = {2, 3}
         self.players = []
-        self._current_player_index = 0
+        self.current_player_idx = 0
         self.winner = None # the winner of the game
 
     def step(self, action: int) -> None:
@@ -60,7 +60,7 @@ class Game:
                 # TODO: fix this logic for 3 players.
                 # If a player has no valid moves, their pieces should be removed from the game.
                 # Then, if there is 1 player left, the winner should be declared.
-                previous_player_index = (self._current_player_index - 1) % len(self.players)
+                previous_player_index = utils.previous_player_index(self.current_player_idx, len(self.players))
                 self.winner = self.players[previous_player_index]
                 self.state = GameState.GAME_OVER
 
@@ -72,7 +72,7 @@ class Game:
         """Returns the current player."""
         if self.players is None:
             raise ValueError("Cannot get the current player. Players are not initialized.")
-        return self.players[self._current_player_index]
+        return self.players[self.current_player_idx]
 
     def _handle_player_select(self, action: int) -> None:
         """Action is the number of players chosen."""
@@ -91,16 +91,16 @@ class Game:
             raise ValueError(f"Invalid action: {utils.decode_action(action)}")
 
         current_player = self.current_player()
-        position = utils.space_index_to_position(action)
+        position = utils.decode_space(action)
         worker_id = len(current_player.get_workers())
         new_worker = Worker(worker_id=worker_id, player=current_player)
         current_player.add_worker(new_worker)
         self.board.place_worker(position, new_worker)
 
         if len(current_player.get_workers()) >= self._num_workers:
-            self._current_player_index += 1
-            if self._current_player_index >= len(self.players):
-                self._current_player_index = 0
+            self.current_player_idx += 1
+            if self.current_player_idx >= len(self.players):
+                self.current_player_idx = 0
                 self.state = GameState.PLAYING
 
     def _handle_turn(self, action: int) -> None:
@@ -108,7 +108,7 @@ class Game:
         Applies the action in the form of (worker_id, move_index, build_index)
         to the game state if it is a valid action.
         """
-        current_player = self.players[self._current_player_index]
+        current_player = self.players[self.current_player_idx]
         if action not in self.valid_actions:
             raise ValueError(f"Invalid action: {utils.decode_action(action)}")
 
@@ -120,7 +120,7 @@ class Game:
         else:
             self.board.build(build_on)
             # cycle through player turns
-            self._current_player_index = (self._current_player_index + 1) % len(self.players)
+            self.current_player_idx = utils.next_player_index(self.current_player_idx, len(self.players))
 
     def _init_players(self, num_players) -> None:
         """Initializes the players in the game."""

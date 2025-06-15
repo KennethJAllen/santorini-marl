@@ -5,7 +5,9 @@ from gymnasium import spaces
 from pettingzoo import AECEnv
 from pettingzoo.utils import wrappers
 from pettingzoo.utils.agent_selector import AgentSelector
+import pygame
 from santorini.game import Game
+from santorini.renderer import PygameRenderer
 
 def santorini_env(**kwargs):
     env = SantoriniEnv(**kwargs)
@@ -36,26 +38,19 @@ class SantoriniEnv(AECEnv):
 
         self.agents = [f"player_{i}" for i in range(num_players)]
         self.possible_agents = self.agents[:]
-        self.agent_to_idx = {
-            agent: idx for idx, agent in enumerate(self.possible_agents)
-        }
-
+        self.agent_to_idx = {agent: idx for idx, agent in enumerate(self.possible_agents)}
         self._agent_selector = AgentSelector(self.agents)
 
-        self.action_spaces = {name: spaces.Discrete(5 * 5 * 8 * 8) for name in self.agents}
+        self.action_spaces = {name: spaces.Discrete(5*5*8*8) for name in self.agents}
         self.observation_spaces = {
                     name: spaces.Dict(
                         {
-                            "observation": spaces.Box(
-                                low=0, high=4, shape=(5, 5, 7), dtype=np.int8
-                            ),
-                            "action_mask": spaces.Box(
-                                low=0, high=1, shape=(1600,), dtype=np.int8 # 1600=5*5*8*8
-                            ),
-                        }
-                    )
+                            "observation": spaces.Box(low=0, high=1, shape=(5, 5, 7), dtype=np.int8),
+                            "action_mask": spaces.Box(low=0, high=1, shape=(5*5*8*8,), dtype=np.int8),
+                            }
+                        )
                     for name in self.agents
-                }
+                    }
 
         self.rewards = None
         self.infos = {name: {} for name in self.agents}
@@ -66,12 +61,12 @@ class SantoriniEnv(AECEnv):
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        # TODO: Contain the rendering logic to a separate module
-        # self.screen_height = self.screen_width = screen_height
-        # self.screen = None
-
-        if self.render_mode in ["human", "rgb_array"]:
-            raise NotImplementedError("Rendering is not yet implemented.")
+        if render_mode in ("human", "rgb_array"):
+            self.renderer = PygameRenderer(
+                grid_size=5,
+                asset_dir="images/assets",
+                screen_size=600
+            )
 
     def reset(self, seed=None, options=None):
         """Resets the game"""
@@ -82,15 +77,11 @@ class SantoriniEnv(AECEnv):
         # Now the game is in SETUP state, waiting for worker placements.
         self._agent_selector = AgentSelector(self.agents)
         self.agent_selection = self._agent_selector.reset()
-
         self.rewards = {name: 0 for name in self.agents}
         self._cumulative_rewards = {name: 0 for name in self.agents}
         self.terminations = {name: False for name in self.agents}
         self.truncations = {name: False for name in self.agents}
         self.infos = {name: {} for name in self.agents}
-
-        if self.render_mode == "human":
-            self.render()
 
     def observation_space(self, agent):
         return self.observation_spaces[agent]
@@ -127,9 +118,6 @@ class SantoriniEnv(AECEnv):
         # Give turn to the next agent
         self.agent_selection = self._agent_selector.next()
 
-        if self.render_mode == "human":
-            self.render()
-
     def render(self):
         """
         Renders the game depending on the render mode.
@@ -140,8 +128,16 @@ class SantoriniEnv(AECEnv):
             gymnasium.logger.warn("You are calling render method without specifying any render mode.")
         elif self.render_mode == "ansi":
             return str(self.game.board)
-        elif self.render_mode in {"human", "rgb_array"}:
-            raise NotImplementedError
+        elif self.render_mode in ("human", "rgb_array"):
+            # draw board, workers, and highlights
+            self.renderer.draw(self.game)
+
+            # let the user click once (or three times, depending on phase),
+            # and return the raw action int as soon as we have one
+            if self.render_mode == "human":
+                return self.renderer.handle_mouse(self.game)
+            else:
+                return None
         else:
             raise ValueError(
                 (f"{self.render_mode} is not a valid render mode. "
@@ -156,18 +152,19 @@ class SantoriniEnv(AECEnv):
             self.infos[name] = {"legal_moves": []}
 
 def main():
-    env = santorini_env()
+    # make an env with human rendering
+    env = santorini_env(render_mode="human")
     env.reset()
 
-    for agent in env.agent_iter():
-        observation, reward, termination, truncation, info = env.last()
+    # game loop
+    done = False
+    while not done:
+        action = env.render()
+        if action is not None:
+            env.step(action)
+            done = all(env.terminations.values())
 
-        if termination or truncation:
-            action = None
-        else:
-            action = env.action_space(agent).sample()
-
-        env.step(action)
+    print(f"Game over! Winner is {env.game.winner}")
     env.close()
 
 if __name__ == "__main__":

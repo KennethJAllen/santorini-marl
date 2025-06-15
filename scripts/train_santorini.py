@@ -19,7 +19,7 @@ from sb3_contrib.common.wrappers import ActionMasker
 
 import pettingzoo.utils
 
-from santorini.santorini_env import santorini_env
+from santorini.env import santorini_env
 
 
 # To pass into other gymnasium wrappers, we need to ensure that pettingzoo's wrappper
@@ -44,8 +44,8 @@ class SB3ActionMaskWrapper(pettingzoo.utils.BaseWrapper, gym.Env):
         return self.observe(self.agent_selection), {}
 
     def step(self, action):
-        """Gymnasium-like step function, returning observation, reward, termination, truncation, info.
-
+        """
+        Gymnasium-like step function, returning observation, reward, termination, truncation, info.
         The observation is for the next agent (used to determine the next action), while the remaining
         items are for the agent that just acted (used to understand what just happened).
         """

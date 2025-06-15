@@ -31,11 +31,11 @@ def main():
 
         elif state == GameState.SETUP:
             # Player is placing a worker. Let’s ask for a board position 0..24 (on a 5x5).
-            print("Setup phase: place your worker on an empty space (row, col).")
+            print("Setup phase: place your worker on an empty space (x, y).")
             try:
-                p_str = input("Enter the placement as comma separated row, col: ")
-                p_row, p_col = tuple(map(int, p_str.split(','))) # split move string
-                action = utils.space_position_to_index((p_row, p_col))
+                p_str = input("Enter the placement as comma separated x, y: ")
+                p_x, p_y = tuple(map(int, p_str.split(','))) # split move string
+                action = utils.encode_space((p_x, p_y))
                 game.step(action)
             except ValueError as e:
                 print(f"Invalid input: {e}")
@@ -49,10 +49,10 @@ def main():
                 worker_id = int(worker_id_str)
                 move_from = game.current_player().get_worker(worker_id).get_position()
 
-                move_to_str = input("Enter the move as comma separated row, col: ")
+                move_to_str = input("Enter the move as comma separated x, y: ")
                 move_to = tuple(map(int, move_to_str.split(','))) # split move string
 
-                b_str = input("Enter the build as separated row, col: ")
+                b_str = input("Enter the build as separated x, y: ")
                 build_on = tuple(map(int, b_str.split(','))) # split build string
 
                 action = utils.encode_action((move_from, move_to, build_on))

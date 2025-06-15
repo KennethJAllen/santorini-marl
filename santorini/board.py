@@ -29,23 +29,24 @@ class Board:
             self._state = state
 
     def __str__(self) -> str:
-        """Return a string representing the board with column headers,
-        row labels, and column-aligned cells showing worker or height."""
+        """
+        Return a string representing the board with column headers,
+        x labels, and column-aligned cells showing worker or height.
+        """
         lines = []
 
         # Build header with column indices.
         header = "    " + "".join(f"{col:^7}" for col in range(self.grid_size))
         lines.append(header)
 
-        for row in range(self.grid_size):
-            # Start each row with the row label.
-            row_line = f"{row:<3}"
-            for col in range(self.grid_size):
-                position = (row, col)
+        for y in range(self.grid_size):
+            row_line = f"{y:<3}"
+            for x in range(self.grid_size):
+                position = (x, y)
                 worker = self.get_position_worker(position)
                 height = self.get_height(position)
 
-                # Represent capped space with "∞" if needed.
+                # Represent capped space with "∞"
                 height_str = "∞" if height > self.max_building_height else str(height)
 
                 if worker:
@@ -90,7 +91,7 @@ class Board:
         valid_actions = set()
         for i, j in product(range(self.grid_size), range(self.grid_size)):
             if not self.get_position_worker((i, j)):
-                action = utils.space_position_to_index((i, j))
+                action = utils.encode_space((i, j))
                 valid_actions.add(action)
         return valid_actions
 
