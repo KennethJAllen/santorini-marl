@@ -11,6 +11,7 @@ dependencies = [
     "pygame>=2.6.1",
     "pylint>=3.3.7",
     "pytest>=8.3.5",
+    "sb3-contrib",
 ]
 
 [project.scripts]
@@ -22,6 +23,8 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "sb3-contrib>=2.6.0",
     "supersuit>=3.10.0",
 ]
+
+[tool.uv.sources]
+sb3-contrib = { git = "https://github.com/Stable-Baselines-Team/stable-baselines3-contrib.git" }

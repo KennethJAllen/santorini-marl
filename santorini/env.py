@@ -5,7 +5,6 @@ from gymnasium import spaces
 from pettingzoo import AECEnv
 from pettingzoo.utils import wrappers
 from pettingzoo.utils.agent_selector import AgentSelector
-import pygame
 from santorini.game import Game
 from santorini.renderer import PygameRenderer
 
