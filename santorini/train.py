@@ -72,10 +72,9 @@ class SB3ActionMaskWrapper(pettingzoo.utils.BaseWrapper, gym.Env):
 
 
 def mask_fn(env):
-    # Do whatever you'd like in this function to return the action mask
-    # for the current env. In this example, we assume the env has a
-    # helpful method we can rely on.
-    return env.action_mask()
+    mask = env.action_mask()
+    assert any(mask)
+    return mask
 
 
 def train_action_mask(env_fn, model_dir: Path, steps=10_000, seed=0, **env_kwargs):
@@ -189,7 +188,7 @@ def main():
     model_dir.mkdir(exist_ok=True)
 
     # Train a model against itself
-    num_steps = 1000
+    num_steps = 200_000
     train_action_mask(env_fn, model_dir, steps=num_steps, seed=0, **env_kwargs)
 
     # Evaluate 1000 games against a random agent
