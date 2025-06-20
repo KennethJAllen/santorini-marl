@@ -1,191 +1,164 @@
-"""Defines Game class."""
-import pygame
+"""Main Santorini game state logic"""
+import enum
 from santorini.board import Board
 from santorini.player import Player, Worker
-from santorini.config import NUM_WORKERS, WIDTH, HEIGHT
+from santorini import utils
+from santorini.config import NUM_WORKERS
+
+class GameState(enum.Enum):
+    """Encodes finite game states."""
+    PLAYER_SELECT = 1
+    SETUP = 2
+    PLAYING = 3
+    GAME_OVER = 4
 
 class Game:
     """Game logic, setup, and main loop."""
+    def __init__(self, num_workers: int = NUM_WORKERS):
+        self.board: Board = Board() # The game board, an instance of the Board class
+        self.state: GameState = GameState.PLAYER_SELECT
+        self.valid_actions: set[int] = {2, 3}
+        self._num_workers: int = num_workers
+        self.players: list[Player] = [] # List of Player objects participating in the game
+        self.current_player_idx: int = 0  # Index to keep track of whose turn it is
+        self.winner: Player | None = None # the winner of the game
 
-    def __init__(self, players: list[Player], board: Board, screen):
-        self._board = board  # The game board, an instance of the Board class
-        self._players = players # List of Player objects participating in the game
-        self._screen = screen
-        self._current_player_index = 0  # Index to keep track of whose turn it is
-        self._num_placed_workers = 0 # number of current player's placed workers. Used in setup
-        self._moved_worker = None # tracks the worker moved
-        self._game_state = 'setup' # either 'setup', 'playing', or 'game_over' depending on game state.
-        self._player_action_sate = 'start_turn' # either 'start_turn', 'move', 'build', or 'end_turn' depending on turn player's action state
-        self._winner = None # the winner of the game
+    def reset(self) -> None:
+        """Sets the board back to start."""
+        self.board = Board()
+        self.state = GameState.PLAYER_SELECT
+        self.valid_actions = {2, 3}
+        self.players = []
+        self.current_player_idx = 0
+        self.winner = None # the winner of the game
 
-    def select(self, position):
-        """Update the selected location and worker."""
-        self._board.set_selected_position(position)
-        self._board.set_selected_worker(position)
-
-    def game_loop(self):
-        """Main game loop."""
-        # initial setup
-        if self._game_state == 'setup':
-            self._setup_board()
-
-        # main game loop
-        elif self._game_state == 'playing':
-            if self._player_action_sate == 'start_turn':
-                self._start_turn()
-            if self._player_action_sate == 'move':
-                self._move_action()
-            if self._player_action_sate == 'build':
-                self._build_action()
-            if self._player_action_sate == 'end_turn':
-                self._end_turn()
-        # end game
-        elif self._game_state == 'game_over':
-            pass
+    def step(self, action: int) -> None:
+        """
+        Updates the game with the given action.
+        When in the player select phase, the action is an integer representing the number of players in the game.
+        When in the setup phase, the action represents a location to place a piece.
+        When in the playing phase, 
+        """
+        if self.state == GameState.PLAYER_SELECT:
+            self._handle_player_select(action)
+        elif self.state == GameState.SETUP:
+            self._handle_setup(action)
+        elif self.state == GameState.PLAYING:
+            self._handle_turn(action)
+        elif self.state == GameState.GAME_OVER:
+            print("Game over: No actions can be taken")
         else:
-            raise ValueError("Game state not one of 'setup', playing', or 'game_over'")
-        
-    def get_game_state(self):
-        """Returns the state of the game."""
-        return self._game_state
+            raise ValueError(f"State not handles by 'update_game': {self.state}")
 
-    def display_game(self):
-        """Displays the current board state."""
-        if self._game_state == 'game_over':
-            self._display_game_over_screen()
+        if self.state == GameState.GAME_OVER:
+            self.valid_actions = set()  # No valid actions when the game is over
         else:
-            grid_size = self._board.get_grid_size()
-            for row_index in range(grid_size):
-                for col_index in range(grid_size):
-                    position = (row_index, col_index)
-                    self._board.display_building(position, self._screen)
-                    self._board.display_worker(position, self._screen)
-            if self._player_action_sate == 'move':
-                self._highlight_moves()
-            if self._player_action_sate == 'build':
-                self._highlight_builds()
-        pygame.display.update()
+            # Update the valid actions for the next player
+            self._update_valid_actions()
+            # Check if the next player has no valid moves
+            if not self.valid_actions:
+                # TODO: fix this logic for 3 players.
+                # If a player has no valid moves, their pieces should be removed from the game.
+                # Then, if there is 1 player left, the winner should be declared.
+                previous_player_index = utils.previous_player_index(self.current_player_idx, len(self.players))
+                self.winner = self.players[previous_player_index]
+                self.state = GameState.GAME_OVER
 
-    def _setup_board(self):
-        """Prepare the game board for play (e.g., initialize players, place workers)."""
-        selected_position = self._board.get_selected_position()
-        if selected_position:
-            if self._board.can_place(selected_position):
-                # If valid space has been selected, add worker to player's workers and set on space.
-                player = self._players[self._current_player_index]
-                worker_id = self._num_placed_workers
-                worker = Worker(player= player, worker_id= worker_id)
-                player.add_worker(worker) # add worker to player's list of workers
-                self._board.place(selected_position, worker) # sets worker on board
-                self._num_placed_workers += 1
+    def is_done(self) -> bool:
+        """True if game is over, false otherwise."""
+        return self.state == GameState.GAME_OVER
 
-                # Handles when maximum number of workers have been placed.
-                if self._num_placed_workers == NUM_WORKERS:
-                    if self._current_player_index == len(self._players) - 1:
-                        # if all workers have been placed
-                        self._update_all_valid_move_actions()
-                        self._game_state = 'playing'
-                        self._current_player_index = 0
-                    else:
-                        # if all workers for the current player have been placed
-                        self._num_placed_workers = 0
-                        self._current_player_index += 1
-            self._board.set_selected_position(None)
+    def current_player(self) -> Player:
+        """Returns the current player."""
+        if self.players is None:
+            raise ValueError("Cannot get the current player. Players are not initialized.")
+        return self.players[self.current_player_idx]
 
-    def _start_turn(self):
-        """Starts turn. Primary purpose is to prevent visual 
-        bug with selecting workers when initializing the board."""
-        self._player_action_sate = 'move'
+    def _handle_player_select(self, action: int) -> None:
+        """Action is the number of players chosen."""
+        if action not in self.valid_actions:
+            raise ValueError(f"Number of players must be one of {', '.join(map(str,self.valid_actions))}. Instead got: {action}")
+        num_players = action
+        self._init_players(num_players)
+        self.state = GameState.SETUP
 
-    def _move_action(self):
-        """Moves the selected worker to the selected position."""
-        selected_space = self._board.get_selected_position()
-        selected_worker = self._board.get_selected_worker()
-        turn_player = self._players[self._current_player_index]
-        if selected_worker and selected_worker.get_player() is turn_player:
-            if selected_space in selected_worker.get_valid_moves():
-                worker_position = selected_worker.get_position()
-                # execute move
-                self._board.move_worker(worker_position, selected_space)
-                # track the moved worker
-                self._moved_worker = selected_worker
-                # check if move won the game
-                if self._board.game_over_status():
-                    player = self._players[self._current_player_index]
-                    self._game_state = 'game_over'
-                    self._winner = player
-                # update valid build actions and action state
-                self._board.update_worker_valid_builds(self._moved_worker)
-                self._player_action_sate = 'build'
+    def _handle_setup(self, action: int) -> None:
+        """
+        Sets player pieces on the board.
+        Takes an action which is a position index from 0 to 25.
+        """
+        if not action in self.valid_actions:
+            raise ValueError(f"Invalid action: {utils.decode_action(action)}")
 
-    def _build_action(self):
-        """Moved worker builds on selected space."""
-        selected_position = self._board.get_selected_position()
-        if selected_position in self._moved_worker.get_valid_builds():
-            worker_position = self._moved_worker.get_position()
-            # execute build
-            self._board.build(worker_position, selected_position)
-            # update all valid move actions and action state
-            self._update_all_valid_move_actions()
-            self._player_action_sate = 'end_turn'
+        current_player = self.current_player()
+        position = utils.decode_space(action)
+        worker_id = len(current_player.get_workers())
+        new_worker = Worker(worker_id=worker_id, player=current_player)
+        current_player.add_worker(new_worker)
+        self.board.place_worker(position, new_worker)
 
-    def _end_turn(self):
-        """Passes the turn to the next player."""
-        num_players = len(self._players)
-        current_player = self._players[self._current_player_index]
-        self._current_player_index = (self._current_player_index + 1) % num_players
-        self._board.set_selected_worker(None)
-        self._board.set_selected_position(None)
-        self._player_action_sate = 'move'
-        # check that next player has a valid move
-        next_player = self._players[self._current_player_index]
-        if self._board.check_cannot_move_lose_condition(next_player):
-            self._winner = current_player
-            self._game_state = 'game_over'
+        if len(current_player.get_workers()) >= self._num_workers:
+            self.current_player_idx += 1
+            if self.current_player_idx >= len(self.players):
+                self.current_player_idx = 0
+                self.state = GameState.PLAYING
 
-    def _update_all_valid_move_actions(self):
-        """Updates all worker's valid move locations."""
-        for player in self._players:
+    def _handle_turn(self, action: int) -> None:
+        """
+        Applies the action in the form of (worker_id, move_index, build_index)
+        to the game state if it is a valid action.
+        """
+        current_player = self.players[self.current_player_idx]
+        if action not in self.valid_actions:
+            raise ValueError(f"Invalid action: {utils.decode_action(action)}")
+
+        move_from, move_to, build_on = utils.decode_action(action)
+        did_move_win = self.board.move_worker(move_from, move_to)
+        if did_move_win:
+            self.state = GameState.GAME_OVER
+            self.winner = current_player
+        else:
+            self.board.build(build_on)
+            # cycle through player turns
+            self.current_player_idx = utils.next_player_index(self.current_player_idx, len(self.players))
+
+    def _init_players(self, num_players) -> None:
+        """Initializes the players in the game."""
+        for player_id in range(num_players):
+            self.players.append(Player(player_id))
+
+    def _update_valid_actions(self) -> None:
+        """
+        Returns a set of valid actions for the current player.
+        The action space is 5x5x8x8, where:
+        - Each of the 5x5 positions identifies the square to move the piece from.
+        - The next 64 planes represents a move along one of eight relative compass directions {N, NE, E, SE, S, SW, W, NW}
+        along with a build action also along one of eight relative compass directions.
+        If the game is in SETUP state,
+        - the valid actions are the integer positions on the board where a piece can be placed.
+        eIf the game is in PLAYER_SELECT state,
+        - the valid actions are the integers 2 or 3, representing the number of players in the game.
+        """
+        if self.state == GameState.PLAYER_SELECT:
+            self.valid_actions =  {2, 3}  # Valid actions are the number of players
+        elif self.state == GameState.SETUP:
+            self.valid_actions =  self.board.get_valid_placement_actions()
+        elif self.state == GameState.PLAYING:
+            player = self.current_player()
+            valid_actions = set()
             for worker in player.get_workers():
-                self._board.update_worker_valid_moves(worker)
+                worker_valid_actions = self.board.get_valid_worker_actions(worker)
+                # Add worker's valid actions to total set of player's valid actions
+                valid_actions = valid_actions | worker_valid_actions
+            self.valid_actions = valid_actions
+        else:
+            raise ValueError(f"Cannot get valid actions in state: {self.state}")
 
-    # display
-
-    def _highlight_moves(self):
-        """Displays the selected worker and potential moves."""
-        worker = self._board.get_selected_worker()
-        turn_player = self._players[self._current_player_index]
-        if worker and worker.get_player() == turn_player:
-            # highlight worker
-            worker_position = worker.get_position()
-            self._board.display_worker_highlight(worker_position, self._screen)
-            # re-desplay worker on top of highlight
-            self._board.display_worker(worker_position, self._screen)
-            # highlight moves
-            for move_location in worker.get_valid_moves():
-                self._board.display_move_hightlight(move_location, self._screen)
-
-
-    def _highlight_builds(self):
-        """Displays potential spaces the moved worker can build on."""
-        worker = self._moved_worker
-        for build_location in worker.get_valid_builds():
-            self._board.display_build_hightlight(build_location, self._screen)
-
-    def _display_game_over_screen(self):
-        """Displays the game over screen."""
-        # colors
-        black = (0, 0, 0)
-        white = (255, 255, 255)
-        self._screen.fill(black)
-        pygame.font.init()
-        font = pygame.font.SysFont('arial', 40)
-        # game over text
-        game_over_text = font.render(f"Player {self._winner.get_player_id()} wins!", True, white)
-        game_over_position = (WIDTH/2 - game_over_text.get_width()/2, HEIGHT/2 - game_over_text.get_height()/3)
-        self._screen.blit(game_over_text, game_over_position)
-        # restart text
-        restart_text = font.render('Press to restart', True, white)
-        restart_position = (WIDTH/2 - restart_text.get_width()/2, HEIGHT/1.9 + restart_text.get_height())
-        self._screen.blit(restart_text, restart_position)
-        pygame.display.update()
+if __name__ == "__main__":
+    g = Game()
+    g.step(2)  # Select 2 players
+    g.step(0)  # Place first worker at position 0
+    g.step(1)  # Place second worker at position 1
+    g.step(2)  # Place third worker at position 2
+    g.step(3)  # Place fourth worker at position 3
+    print(g.valid_actions)

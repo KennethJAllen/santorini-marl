@@ -1,16 +1,30 @@
-[tool.poetry]
+[project]
 name = "santorini"
 version = "0.1.0"
-description = ""
-authors = ["Kenneth <kencubed@gmail.com>"]
+description = "A recreation of the board game Santorini in Python"
 readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "gymnasium>=1.1.1",
+    "numpy>=2.2.5",
+    "pettingzoo>=1.25.0",
+    "pygame>=2.6.1",
+    "pylint>=3.3.7",
+    "pytest>=8.3.5",
+    "sb3-contrib",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-pytest = "^8.1.1"
-pygame = "^2.5.2"
-
+[project.scripts]
+cli = "cli:main"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "supersuit>=3.10.0",
+]
+
+[tool.uv.sources]
+sb3-contrib = { git = "https://github.com/Stable-Baselines-Team/stable-baselines3-contrib.git" }
