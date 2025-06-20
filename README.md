@@ -1,6 +1,7 @@
 # Santorini
 
-[Santorini](https://boardgamegeek.com/boardgame/194655/santorini), is an abstract board game, first [published in 2004](https://boardgamegeek.com/boardgame/9963/santorini). It is a two to three player turn based game, typically played on a $5 \times 5$ grid, where players must reach the third level of the board.
+[Santorini](https://en.wikipedia.org/wiki/Santorini_(game)), is an abstract board game, first [published in 2004](https://boardgamegeek.com/boardgame/9963/santorini). It is a two to three player game that is typically played on a $5 \times 5$ grid.
+
 
 ![Santorini being played](/images/santorini.png)
 
@@ -25,9 +26,8 @@ To play in the browser, visit https://www.kennethallenmath.com/santorini/.
 
 ### Clone the Repository:
 
-```bash
-git clone https://github.com/KennethJAllen/YGO-small-world
-cd YGO-small-world
+git clone https://github.com/KennethJAllen/santorini
+cd santorini
 ```
 ### Create Virtual Environment
 
