@@ -15,6 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
+santorini = "santorini.play_vs_model:main"
 cli = "cli:main"
 
 [build-system]

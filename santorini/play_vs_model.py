@@ -61,10 +61,13 @@ def play(model_path: Path, human_player: int = 0):
 
     print("Game over!")
 
-if __name__ == "__main__":
+def main():
     models = sorted(Path(".").glob("models/santorini_*.zip"))
     if not models:
         raise RuntimeError("No saved model found in ./models/")
     latest = models[-1]
     print(f"Loading {latest}")
     play(latest)
+
+if __name__ == "__main__":
+    main()
