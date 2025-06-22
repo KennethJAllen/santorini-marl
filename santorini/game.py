@@ -92,12 +92,12 @@ class Game:
 
         current_player = self.current_player()
         position = utils.decode_space(action)
-        worker_id = len(current_player.get_workers())
+        worker_id = len(current_player.workers)
         new_worker = Worker(worker_id=worker_id, player=current_player)
         current_player.add_worker(new_worker)
         self.board.place_worker(position, new_worker)
 
-        if len(current_player.get_workers()) >= self._num_workers:
+        if len(current_player.workers) >= self._num_workers:
             self.current_player_idx += 1
             if self.current_player_idx >= len(self.players):
                 self.current_player_idx = 0
@@ -146,7 +146,7 @@ class Game:
         elif self.state == GameState.PLAYING:
             player = self.current_player()
             valid_actions = set()
-            for worker in player.get_workers():
+            for worker in player.workers:
                 worker_valid_actions = self.board.get_valid_worker_actions(worker)
                 # Add worker's valid actions to total set of player's valid actions
                 valid_actions = valid_actions | worker_valid_actions

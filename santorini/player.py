@@ -14,9 +14,10 @@ class Worker:
         position: The position that the worker is on.
         gender: Relevant for god cards. Not currently used.
         """
+        self.position: tuple[int, int] = None
         self._id: int = worker_id
         self._player: Player = player
-        self._position: tuple[int, int] = None
+
 
     def __bool__(self):
         return bool(self._player or self._id)
@@ -24,7 +25,7 @@ class Worker:
     def __eq__(self, other):
         if not isinstance(other, Worker):
             # don't attempt to compare against unrelated types
-            return NotImplemented
+            raise NotImplementedError
         return self._player is other._player and self._id == other._id
 
     def __str__(self):
@@ -44,11 +45,7 @@ class Worker:
 
     def set_positon(self, position: tuple[int,int]) -> None:
         """Set the worker position."""
-        self._position = position
-
-    def get_position(self) -> tuple[int,int]:
-        """Get the worker position."""
-        return self._position
+        self.position = position
 
 class Player:
     """Player class to manage player actions and workers."""
@@ -57,9 +54,9 @@ class Player:
         self._id = player_id
         # set of workers
         if workers is None:
-            self._workers = []
+            self.workers = []
         else:
-            self._workers = workers
+            self.workers = workers
 
     def __bool__(self):
         return False if self._id is None else True
@@ -75,15 +72,11 @@ class Player:
 
     def add_worker(self, worker: Worker) -> None:
         """Adds a worker to the list of workers."""
-        self._workers.append(worker)
+        self.workers.append(worker)
 
     def get_worker(self, worker_id) -> Worker:
         """Returns the player's worker with corresponding worker_id."""
-        for worker in self._workers:
+        for worker in self.workers:
             if worker.get_id() == worker_id:
                 return worker
         raise ValueError(f"Player does not have any workers with worker id: {worker_id}")
-
-    def get_workers(self) -> list[Worker]:
-        """Get the dictionary of the player's workers."""
-        return self._workers

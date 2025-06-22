@@ -34,7 +34,7 @@ def main():
             print("Setup phase: place your worker on an empty space (x, y).")
             try:
                 p_str = input("Enter the placement as comma separated x, y: ")
-                p_x, p_y = tuple(map(int, p_str.split(','))) # split move string
+                p_x, p_y = tuple(map(int, p_str.strip(',').split(','))) # split move string
                 action = utils.encode_space((p_x, p_y))
                 game.step(action)
             except ValueError as e:
@@ -47,7 +47,7 @@ def main():
             try:
                 worker_id_str = input("Enter worker_id: ")
                 worker_id = int(worker_id_str)
-                move_from = game.current_player().get_worker(worker_id).get_position()
+                move_from = game.current_player().get_worker(worker_id).position
 
                 move_to_str = input("Enter the move as comma separated x, y: ")
                 move_to = tuple(map(int, move_to_str.split(','))) # split move string

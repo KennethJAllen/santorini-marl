@@ -1,7 +1,4 @@
-import time
 from pathlib import Path
-
-from pettingzoo.utils.conversions import aec_to_parallel
 import supersuit as ss
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker

@@ -102,7 +102,7 @@ class Board:
         If a move will win the game (by moving a piece to a height 3 building), the build index is arbitrary.
         """
         valid_actions = set()
-        worker_position = worker.get_position()
+        worker_position = worker.position
         valid_moves = self._get_valid_moves_from_position(worker_position)
         for move_position in valid_moves:
             for build_position in self._valid_move_then_build_positions(worker, move_position):

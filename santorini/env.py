@@ -109,8 +109,15 @@ class SantoriniEnv(AECEnv):
         game_over = self.game.is_done()
 
         if game_over:
+            # Set rewards for winning
             result_val = 1 if self.game.winner == self.game.players[0] else -1
             self.set_game_result(result_val)
+        else:
+            player_idx = self.agent_to_idx[self.agent_selection]
+            opp_idx = 1 - player_idx
+            player_heights = sum(self.game.board.get_height(worker.position) for worker in self.game.players[player_idx].workers)
+            opp_heights = sum(self.game.board.get_height(worker.position) for worker in self.game.players[opp_idx].workers)
+            self.rewards[self.agent_selection] = 0.1 * (player_heights - opp_heights)
 
         self._accumulate_rewards()
 
@@ -147,7 +154,8 @@ class SantoriniEnv(AECEnv):
         for i, name in enumerate(self.agents):
             self.terminations[name] = True
             result_coef = 1 if i == 0 else -1
-            self.rewards[name] = result_val * result_coef
+            reward = result_val * result_coef
+            self.rewards[name] = reward
             self.infos[name] = {"legal_moves": []}
 
 def main():
