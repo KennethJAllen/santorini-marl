@@ -73,7 +73,9 @@ class SB3ActionMaskWrapper(pettingzoo.utils.BaseWrapper, gym.Env):
 
 def mask_fn(env):
     mask = env.action_mask()
+    # Ensure there is at least one valid action
     assert any(mask)
+
     return mask
 
 

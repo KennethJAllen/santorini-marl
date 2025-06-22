@@ -16,6 +16,7 @@ class PygameRenderer:
         self.screen = pygame.display.set_mode((screen_size, screen_size))
         self.cell_size = screen_size // grid_size
         self.asset_dir = asset_dir
+        self.clock = pygame.time.Clock()
         self.load_assets()
         self.selected_worker = None
         self.highlight_squares = []
@@ -78,63 +79,75 @@ class PygameRenderer:
 
         pygame.display.flip()
 
-    def handle_mouse(self, game: Game) -> int:
-        """
-        Processes one click. Returns an action int if a full move+build
-        has been selected, otherwise None.
-        """
+    def tick(self, game: Game):
+        # Pump events & allow quitting
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 raise SystemExit
+        # Draw & flip
+        self.draw(game)
+        pygame.display.flip()
+        # Cap framerate
+        self.clock.tick(30)
 
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mouse_x, mouse_y = event.pos
-                move = mouse_x // self.cell_size, mouse_y // self.cell_size
-                gx, gy = move
+    def get_human_action(self, game: Game) -> int:
+        # Wait until a valid move+build action is clicked
+        while True:
+            # Pump quit events
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    raise SystemExit
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    mx, my = event.pos
+                    move = mx // self.cell_size, my // self.cell_size
+                    # handle setup or play clicks
+                    action = self._process_click(game, move)
+                    if action is not None:
+                        return action
+            # redraw highlights while waiting
+            self.tick(game)
 
-                # Set up the pieces
-                if game.state == game.state.SETUP:
-                    space_action = utils.encode_space((gx, gy))
-                    if space_action in game.valid_actions:
-                        return space_action
+    def _process_click(self, game: Game, move: tuple) -> int:
+        # Returns action int if valid, else None
+        gx, gy = move
+        if game.state == game.state.SETUP:
+            act = utils.encode_space((gx, gy))
+            return act if act in game.valid_actions else None
 
-                # Playing the game
-                # 1) Pick up one of your workers
-                if self.selected_worker is None:
-                    starts = {utils.decode_action(a)[0] for a in game.valid_actions}
-                    if move in starts:
-                        self.selected_worker = move
-                        # highlight legal move targets
-                        self.highlight_squares = [
-                            utils.decode_action(a)[1]
-                            for a in game.valid_actions
-                            if utils.decode_action(a)[0] == move
-                        ]
+        # picking worker
+        if self.selected_worker is None:
+            starts = {utils.decode_action(a)[0] for a in game.valid_actions}
+            if move in starts:
+                self.selected_worker = move
+                self.highlight_squares = [
+                    utils.decode_action(a)[1]
+                    for a in game.valid_actions
+                    if utils.decode_action(a)[0] == move
+                ]
+            return None
 
-                # 2) Once a worker is selected, choose **move** target
-                elif self._pending_move is None and move in self.highlight_squares:
-                    self._pending_move = move
-                    # highlight legal build spots
-                    self.highlight_squares = [
-                        utils.decode_action(a)[2]
-                        for a in game.valid_actions
-                        if (utils.decode_action(a)[0] == self.selected_worker
-                            and utils.decode_action(a)[1] == self._pending_move)
-                    ]
+        # picking move target
+        if self._pending_move is None and move in self.highlight_squares:
+            self._pending_move = move
+            self.highlight_squares = [
+                utils.decode_action(a)[2]
+                for a in game.valid_actions
+                if (utils.decode_action(a)[0] == self.selected_worker
+                    and utils.decode_action(a)[1] == self._pending_move)
+            ]
+            return None
 
-                # 3) Now that move is set, clicking on a build‐spot completes the action
-                elif self._pending_move is not None and move in self.highlight_squares:
-                    for a in game.valid_actions:
-                        frm, to, build = utils.decode_action(a)
-                        if (frm == self.selected_worker
-                                and to == self._pending_move
-                                and build == move):
-                            action = a
-                            # reset for next turn
-                            self.selected_worker = None
-                            self._pending_move = None
-                            self.highlight_squares = []
-                            return action
-
+        # picking build target
+        if self._pending_move is not None and move in self.highlight_squares:
+            for a in game.valid_actions:
+                frm, to, build = utils.decode_action(a)
+                if frm == self.selected_worker and to == self._pending_move and build == move:
+                    action = a
+                    # reset
+                    self.selected_worker = None
+                    self._pending_move = None
+                    self.highlight_squares = []
+                    return action
         return None

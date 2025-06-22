@@ -30,17 +30,13 @@ def play(model_path: Path, human_player: int = 0):
     # 6) Main loop: human goes when current_player_idx == human_player
     done = False
     while not done:
-        # Draw the current underlying Game state
-        #   sb3_env.env is the raw AECEnv, which has attribute .game
-        env = sb3_env.env
-        game = env.game
-        renderer.draw(game)
+        # Draw the current Game state
+        game = sb3_env.env.game
+        renderer.tick(game)
 
         if game.current_player_idx == human_player:
             # block until the human clicks a full (move+build) action
-            action = None
-            while action is None:
-                action = renderer.handle_mouse(game)
+            action = renderer.get_human_action(game)
         else:
             # let SB3 pick for us (pass the mask in)
             current_mask = mask_env.action_masks()  # from SB3ActionMaskWrapper

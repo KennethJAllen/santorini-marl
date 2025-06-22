@@ -141,7 +141,7 @@ class SantoriniEnv(AECEnv):
             # let the user click once (or three times, depending on phase),
             # and return the raw action int as soon as we have one
             if self.render_mode == "human":
-                return self.renderer.handle_mouse(self.game)
+                return self.renderer.get_human_action(self.game)
             else:
                 return None
         else:
