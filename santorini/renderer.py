@@ -64,12 +64,22 @@ class PygameRenderer:
         # Show the board from the perspective of the first player.
         obs = board.get_observation(0)
 
-        for building_channel_idx in range(7):
-            building_img = self.images[building_channel_idx]
-            channel = obs[:,:,building_channel_idx]
+        # Iterate over all channels: 0-3 are building levels, 4 is dome, 5-7 are players
+        for channel_idx in range(obs.shape[2]):
+            channel = obs[:,:,channel_idx]
             for (x, y), value in np.ndenumerate(channel):
-                if value:
-                    self.screen.blit(building_img, self.board_to_pixel(x, y))
+                if not value:
+                    continue
+
+                if channel_idx <= game.board.max_building_height + 1:
+                    # Draw building from ground up
+                    for idx in range(channel_idx + 1):
+                        building_img = self.images[idx]
+                        self.screen.blit(building_img, self.board_to_pixel(x, y))
+                else:
+                    # Draw workers
+                    worker_img = self.images[channel_idx]
+                    self.screen.blit(worker_img, self.board_to_pixel(x, y))
 
         # Highlight
         for hx, hy in self.highlight_squares:
