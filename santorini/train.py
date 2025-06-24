@@ -164,12 +164,11 @@ def eval_action_mask(env_fn, model_dir: Path, num_games: int=100, render_mode:st
                     act = env.action_space(agent).sample(action_mask)
                 else:
                     # Note: PettingZoo expects integer actions
-                    act = int(
-                        model.predict(
-                            observation, action_masks=action_mask, deterministic=True
-                        )[0]
-                    )
+                    act = int(model.predict(observation, action_masks=action_mask, deterministic=True)[0])
             env.step(act)
+            if render_mode == "rgb_array":
+                env.render()
+                time.sleep(0.5)
     env.close()
 
     # Avoid dividing by zero
@@ -190,14 +189,14 @@ def main():
     model_dir.mkdir(exist_ok=True)
 
     # Train a model against itself
-    num_steps = 100_000
+    num_steps = 1_000
     train_action_mask(env_fn, model_dir, steps=num_steps, seed=0, **env_kwargs)
 
     # Evaluate 1000 games against a random agent
     eval_action_mask(env_fn, model_dir, num_games=500, render_mode=None, **env_kwargs)
 
     # Watch two games vs a random agent
-    eval_action_mask(env_fn, model_dir, num_games=2, render_mode="ansi", **env_kwargs)
+    eval_action_mask(env_fn, model_dir, num_games=2, render_mode="rgb_array", **env_kwargs)
 
 
 if __name__ == "__main__":
