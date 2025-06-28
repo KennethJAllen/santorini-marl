@@ -99,7 +99,7 @@ def train_action_mask(env_fn, model_dir: Path, steps=10_000, seed=0, **env_kwarg
     model.set_random_seed(seed)
     model.learn(total_timesteps=steps)
 
-    save_path = model_dir / f"{env.unwrapped.metadata.get('name')}_{time.strftime('%Y%m%d-%H%M%S')}"
+    save_path = model_dir / f"{env.unwrapped.metadata['name']}_{time.strftime('%Y%m%d-%H%M%S')}"
     model.save(save_path)
 
     print(f"Model has been saved to {save_path}")
@@ -135,7 +135,6 @@ def eval_action_mask(env_fn, model_dir: Path, num_games: int=100, render_mode:st
 
     for i in range(num_games):
         env.reset(seed=i)
-        env.action_space(env.possible_agents[0]).seed(i)
 
         for agent in env.agent_iter():
             obs, reward, termination, truncation, info = env.last()
@@ -189,7 +188,9 @@ def main():
     model_dir.mkdir(exist_ok=True)
 
     # Train a model against itself
-    num_steps = 1_000
+    num_steps = 300_000
+    import torch
+    torch.autograd.set_detect_anomaly(True)
     train_action_mask(env_fn, model_dir, steps=num_steps, seed=0, **env_kwargs)
 
     # Evaluate 1000 games against a random agent
