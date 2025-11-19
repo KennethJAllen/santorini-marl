@@ -64,22 +64,33 @@ class PygameRenderer:
         # Show the board from the perspective of the first player.
         obs = board.get_observation(0)
 
-        # Iterate over all channels: 0-3 are building levels, 4 is dome, 5-7 are players
-        for channel_idx in range(obs.shape[2]):
+        # Draw buildings first (channels 0-4: empty, height1, height2, height3, dome)
+        for channel_idx in range(5):  # 0-4 are building channels
             channel = obs[:,:,channel_idx]
             for (x, y), value in np.ndenumerate(channel):
                 if not value:
                     continue
+                # Draw building from ground up
+                for idx in range(channel_idx + 1):
+                    building_img = self.images[idx]
+                    self.screen.blit(building_img, self.board_to_pixel(x, y))
 
-                if channel_idx <= game.board.max_building_height + 1:
-                    # Draw building from ground up
-                    for idx in range(channel_idx + 1):
-                        building_img = self.images[idx]
-                        self.screen.blit(building_img, self.board_to_pixel(x, y))
-                else:
-                    # Draw workers
-                    worker_img = self.images[channel_idx]
-                    self.screen.blit(worker_img, self.board_to_pixel(x, y))
+        # Draw workers (channels 5-8: current player workers 0-1, opponent workers 0-1)
+        # Map observation channels 5-8 to player images 5-7 (we only have 3 player images)
+        worker_channel_to_image = {
+            5: 5,  # current player worker 0 -> player1 image
+            6: 5,  # current player worker 1 -> player1 image
+            7: 6,  # opponent worker 0 -> player2 image
+            8: 6,  # opponent worker 1 -> player2 image
+        }
+
+        for channel_idx in range(5, 9):  # channels 5-8 are individual workers
+            channel = obs[:,:,channel_idx]
+            for (x, y), value in np.ndenumerate(channel):
+                if not value:
+                    continue
+                worker_img = self.images[worker_channel_to_image[channel_idx]]
+                self.screen.blit(worker_img, self.board_to_pixel(x, y))
 
         # Highlight
         for hx, hy in self.highlight_squares:

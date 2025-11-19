@@ -5,7 +5,7 @@ from gymnasium import spaces
 from pettingzoo import AECEnv
 from pettingzoo.utils import wrappers
 from pettingzoo.utils.agent_selector import AgentSelector
-from santorini.game import Game
+from santorini.game import Game, GameState
 from santorini.renderer import PygameRenderer
 
 def santorini_env(**kwargs):
@@ -14,8 +14,9 @@ def santorini_env(**kwargs):
     env = wrappers.OrderEnforcingWrapper(env)
     # catch out-of-bounds ints
     env = wrappers.AssertOutOfBoundsWrapper(env)
-    # handle in-bounds but “illegal” game moves
-    env = wrappers.TerminateIllegalWrapper(env, illegal_reward=-1)
+    # handle in-bounds but "illegal" game moves
+    # Reduced penalty from -1 to -0.1 to prevent policy from becoming too conservative
+    env = wrappers.TerminateIllegalWrapper(env, illegal_reward=-0.1)
     return env
 
 class SantoriniEnv(AECEnv):
@@ -44,7 +45,7 @@ class SantoriniEnv(AECEnv):
         self.observation_spaces = {
                     name: spaces.Dict(
                         {
-                            "observation": spaces.Box(low=0, high=1, shape=(5, 5, 7), dtype=np.int8),
+                            "observation": spaces.Box(low=0, high=1, shape=(5, 5, 11), dtype=np.int8),
                             "action_mask": spaces.Box(low=0, high=1, shape=(5*5*8*8,), dtype=np.int8),
                             }
                         )
@@ -104,6 +105,9 @@ class SantoriniEnv(AECEnv):
         if self.terminations[self.agent_selection] or self.truncations[self.agent_selection]:
             return self._was_dead_step(action)
 
+        # Reset rewards for current agent before calculating new reward
+        self.rewards[self.agent_selection] = 0
+
         self.game.step(action)
 
         game_over = self.game.is_done()
@@ -112,17 +116,118 @@ class SantoriniEnv(AECEnv):
             # Set rewards for winning
             result_val = 1 if self.game.winner == self.game.players[0] else -1
             self.set_game_result(result_val)
-        else:
+        elif self.game.state == GameState.PLAYING:
+            # Strategic reward during gameplay
             player_idx = self.agent_to_idx[self.agent_selection]
             opp_idx = 1 - player_idx
-            player_heights = sum(self.game.board.get_height(worker.position) for worker in self.game.players[player_idx].workers)
-            opp_heights = sum(self.game.board.get_height(worker.position) for worker in self.game.players[opp_idx].workers)
-            self.rewards[self.agent_selection] = 0.1 * (player_heights - opp_heights)
+            reward = self._calculate_strategic_reward(player_idx, opp_idx)
+            self.rewards[self.agent_selection] = reward
+        elif self.game.state == GameState.SETUP:
+            # Setup phase reward shaping
+            player_idx = self.agent_to_idx[self.agent_selection]
+            reward = self._calculate_setup_reward(player_idx)
+            self.rewards[self.agent_selection] = reward
 
         self._accumulate_rewards()
 
         # Give turn to the next agent
         self.agent_selection = self._agent_selector.next()
+
+    def _calculate_strategic_reward(self, player_idx: int, opp_idx: int) -> float:
+        """
+        Calculate a strategic reward that combines multiple signals:
+        1. Maximum height advantage (ability to win soon)
+        2. Average height advantage (overall board control)
+        3. Mobility advantage (number of valid moves)
+        4. Win threat bonus (can reach height 3 next turn)
+        """
+        player = self.game.players[player_idx]
+        opp = self.game.players[opp_idx]
+
+        # Safety check: ensure workers are placed
+        if not player.workers or not opp.workers:
+            return 0.0
+
+        # Maximum height (most important - closer to winning)
+        player_max_height = max(self.game.board.get_height(w.position) for w in player.workers if w.position is not None)
+        opp_max_height = max(self.game.board.get_height(w.position) for w in opp.workers if w.position is not None)
+        max_height_reward = 0.3 * (player_max_height - opp_max_height)
+
+        # Average height (general board control)
+        player_avg_height = sum(self.game.board.get_height(w.position) for w in player.workers if w.position is not None) / len(player.workers)
+        opp_avg_height = sum(self.game.board.get_height(w.position) for w in opp.workers if w.position is not None) / len(opp.workers)
+        avg_height_reward = 0.1 * (player_avg_height - opp_avg_height)
+
+        # Mobility (number of valid actions)
+        player_valid_actions = set()
+        for worker in player.workers:
+            player_valid_actions |= self.game.board.get_valid_worker_actions(worker)
+
+        opp_valid_actions = set()
+        for worker in opp.workers:
+            opp_valid_actions |= self.game.board.get_valid_worker_actions(worker)
+
+        # Normalize by typical number of moves (~20-40)
+        mobility_reward = 0.01 * (len(player_valid_actions) - len(opp_valid_actions))
+
+        # Win threat bonus: can any worker reach height 3?
+        player_can_win = False
+        for worker in player.workers:
+            if worker.position is not None:
+                worker_position = worker.position
+                valid_moves = self.game.board._get_valid_moves_from_position(worker_position)
+                if any(self.game.board.get_height(move_pos) == 3 for move_pos in valid_moves):
+                    player_can_win = True
+                    break
+
+        opp_can_win = False
+        for worker in opp.workers:
+            if worker.position is not None:
+                worker_position = worker.position
+                valid_moves = self.game.board._get_valid_moves_from_position(worker_position)
+                if any(self.game.board.get_height(move_pos) == 3 for move_pos in valid_moves):
+                    opp_can_win = True
+                    break
+
+        win_threat_reward = 0.2 if player_can_win else 0.0
+        win_threat_reward -= 0.2 if opp_can_win else 0.0
+
+        return max_height_reward + avg_height_reward + mobility_reward + win_threat_reward
+
+    def _calculate_setup_reward(self, player_idx: int) -> float:
+        """
+        Calculate reward during setup phase.
+        Encourages:
+        - Placing workers near center (more mobility)
+        - Keeping workers separated (more board coverage)
+        - Avoiding corners (less mobility)
+        """
+        player = self.game.players[player_idx]
+        if not player.workers:
+            return 0.0
+
+        reward = 0.0
+        last_worker = player.workers[-1]  # The worker just placed
+        x, y = last_worker.position
+
+        # Center bonus: reward positions closer to center
+        center = self.game.board.grid_size / 2
+        distance_from_center = abs(x - center) + abs(y - center)
+        max_distance = 2 * (center - 0.5)  # Maximum Manhattan distance from center
+        center_reward = 0.05 * (1 - distance_from_center / max_distance)
+        reward += center_reward
+
+        # Separation bonus: penalize workers too close together
+        if len(player.workers) > 1:
+            for other_worker in player.workers[:-1]:
+                ox, oy = other_worker.position
+                distance = max(abs(x - ox), abs(y - oy))  # Chebyshev distance
+                if distance <= 1:
+                    reward -= 0.1  # Penalty for adjacent workers
+                elif distance == 2:
+                    reward -= 0.05  # Small penalty for very close workers
+
+        return reward
 
     def render(self):
         """

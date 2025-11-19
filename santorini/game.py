@@ -86,6 +86,7 @@ class Game:
         """
         Sets player pieces on the board.
         Takes an action which is a position index from 0 to 25.
+        Players alternate placing one worker at a time.
         """
         if not action in self.valid_actions:
             raise ValueError(f"Invalid action: {utils.decode_action(action)}")
@@ -97,11 +98,14 @@ class Game:
         current_player.add_worker(new_worker)
         self.board.place_worker(position, new_worker)
 
-        if len(current_player.workers) >= self._num_workers:
-            self.current_player_idx += 1
-            if self.current_player_idx >= len(self.players):
-                self.current_player_idx = 0
-                self.state = GameState.PLAYING
+        # Check if all players have placed all their workers
+        all_workers_placed = all(len(player.workers) >= self._num_workers for player in self.players)
+        if all_workers_placed:
+            self.state = GameState.PLAYING
+            self.current_player_idx = 0
+        else:
+            # Alternate to next player after each worker placement
+            self.current_player_idx = utils.next_player_index(self.current_player_idx, len(self.players))
 
     def _handle_turn(self, action: int) -> None:
         """

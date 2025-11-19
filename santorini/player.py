@@ -43,7 +43,7 @@ class Worker:
         """Returns the player that the worker belongs to."""
         return self._player
 
-    def set_positon(self, position: tuple[int,int]) -> None:
+    def set_position(self, position: tuple[int,int]) -> None:
         """Set the worker position."""
         self.position = position
 

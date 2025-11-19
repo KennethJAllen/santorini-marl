@@ -9,14 +9,14 @@ dependencies = [
     "numpy>=2.2.5",
     "pettingzoo>=1.25.0",
     "pygame>=2.6.1",
-    "pylint>=3.3.7",
     "pytest>=8.3.5",
     "sb3-contrib",
 ]
 
 [project.scripts]
 santorini = "santorini.play_vs_model:main"
-cli = "cli:main"
+cli = "santorini.cli:main"
+train = "santorini.train:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -24,6 +24,7 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "ruff>=0.14.5",
     "supersuit>=3.10.0",
 ]
 

@@ -113,40 +113,57 @@ class Board:
     def get_observation(self, current_player_index) -> np.ndarray:
         """
         Returns an array-based representation of the board state.
-        The board is represented by 7 binary channels,
+        The board is represented by 11 binary channels,
         each of size grid_size x grid_size (typically 5x5).
 
         channel 0-4: building heights.
-            - 0: 1 nothing if no building, else 0
+            - 0: 1 if no building, else 0
             - 1: 1 for height 1, else 0
             - 2: 1 for height 2, else 0
             - 3: 1 for height 3, else 0
             - 4: 1 if capped, else 0
             (max building height greater than 3 is not supported by this function)
-        channel 5-6: which player's piece occupies each cell.
-            - 5: 1 if the turn player occupies the cell, else 0
-            - 6: 1 if the other player occupies the cell, else 0
+        channel 5-8: individual workers by identity
+            - 5: 1 if current player's worker 0 occupies the cell, else 0
+            - 6: 1 if current player's worker 1 occupies the cell, else 0
+            - 7: 1 if opponent's worker 0 occupies the cell, else 0
+            - 8: 1 if opponent's worker 1 occupies the cell, else 0
+        channel 9-10: aggregated player occupancy (for backward compatibility)
+            - 9: 1 if any current player worker occupies the cell, else 0
+            - 10: 1 if any opponent worker occupies the cell, else 0
 
-        WARNING: This function assumes that the game is played with 2 players.
+        WARNING: This function assumes that the game is played with 2 players
+                 and each player has exactly 2 workers.
         """
-        obs = np.zeros((self.grid_size, self.grid_size, 7), dtype=bool)
+        obs = np.zeros((self.grid_size, self.grid_size, 11), dtype=np.int8)
         # iterate through each position on the board
         for i, j in product(range(self.grid_size), range(self.grid_size)):
             height = self.get_height((i, j))
-            # channels 0-4:
-            # Just set the channel corresponding to the height to 1
-            # because default is 0 and channel i corresponds to height i.
+            # channels 0-4: building heights
+            # Set the channel corresponding to the height to 1
             obs[i, j, height] = 1
-            # channel 5-6:
-            player = self.get_position_worker((i, j)).get_player()
+
+            # channels 5-10: worker positions
+            worker = self.get_position_worker((i, j))
+            player = worker.get_player()
             if player is None:
                 continue
+
+            worker_id = worker.get_id()
             if player.get_id() == current_player_index:
-                # channel 5: current player
-                obs[i, j, 5] = 1
+                # Current player's workers
+                if worker_id == 0:
+                    obs[i, j, 5] = 1  # Current player worker 0
+                elif worker_id == 1:
+                    obs[i, j, 6] = 1  # Current player worker 1
+                obs[i, j, 9] = 1  # Aggregated current player
             else:
-                # channel 6: other player
-                obs[i, j, 6] = 1
+                # Opponent's workers
+                if worker_id == 0:
+                    obs[i, j, 7] = 1  # Opponent worker 0
+                elif worker_id == 1:
+                    obs[i, j, 8] = 1  # Opponent worker 1
+                obs[i, j, 10] = 1  # Aggregated opponent
         return obs
 
     def get_position_worker(self, position: tuple[int, int]) -> Worker:
@@ -209,7 +226,7 @@ class Board:
     def _set_position_worker(self, position: tuple[int, int], worker: Worker) -> None:
         """Sets the given worker on the given position."""
         self._state[position][0] = worker
-        worker.set_positon(position)
+        worker.set_position(position)
 
     def _can_move(self, worker_position: tuple[int, int], target_position: tuple[int,int]) -> bool:
         """
