@@ -2,26 +2,28 @@
 # pylint: disable=locally-disabled, multiple-statements, fixme, line-too-long, redefined-outer-name, missing-function-docstring, protected-access
 
 import pytest
+from santorini.board import Board
+from santorini.player import Worker
 
-def test_grid_size(board_populated):
-    grid_size = board_populated.get_grid_size()
+def test_grid_size(board_populated: Board):
+    grid_size = board_populated.grid_size
     expected_grid_size = 5
     assert grid_size == expected_grid_size
 
-def test_get_position_worker_populated(board_populated, worker_a2):
+def test_get_position_worker_populated(board_populated: Board, worker_a2: Worker):
     position = (1, 1)
-    worker = board_populated._get_position_worker(position)
+    worker = board_populated.get_worker(position)
     assert worker == worker_a2
 
-def test_get_position_worker_empty(board_populated, worker_empty):
+def test_get_position_worker_empty(board_populated: Board, worker_empty: Worker):
     position = (2,4)
-    worker = board_populated._get_position_worker(position)
+    worker = board_populated.get_worker(position)
     assert worker == worker_empty
 
-def test_set_position_worker(board_empty, worker_a1):
+def test_set_position_worker(board_empty: Board, worker_a1: Worker):
     position = (2,4)
     board_empty._set_position_worker(position, worker_a1)
-    worker = board_empty._get_position_worker(position)
+    worker = board_empty.get_worker(position)
     assert worker == worker_a1
 
 # _get_position_height
@@ -36,25 +38,11 @@ def test_set_position_worker(board_empty, worker_a1):
         ((1,0), 4),  # position (1,0), expect height 4
     ]
 )
-def test_get_position_height(board_populated, position, expected_height):
-    height = board_populated._get_position_height(position)
+def test_get_height(board_populated: Board,
+                    position: tuple[int, int],
+                    expected_height: int):
+    height = board_populated.get_height(position)
     assert height == expected_height
-
-# test set_position_height
-
-def test_set_position_height_finite(board_empty):
-    position = (2,4)
-    expected_height = 2
-    board_empty._set_position_height(position, expected_height)
-    height = board_empty._get_position_height(position)
-    assert expected_height == height
-
-def test_set_position_height_inf(board_empty):
-    position = (2,4)
-    expected_height = 4
-    board_empty._set_position_height(position, expected_height)
-    height = board_empty._get_position_height(position)
-    assert expected_height == height
 
 # test is_on_board
 @pytest.mark.parametrize(
@@ -67,7 +55,9 @@ def test_set_position_height_inf(board_empty):
         ((4,5), False)
     ]
 )
-def test_is_on_board(board_empty, position, expected):
+def test_is_on_board(board_empty: Board,
+                     position: tuple[int, int],
+                     expected: bool):
     assert board_empty._is_on_board(position) == expected
 
 # test can_move
@@ -81,7 +71,9 @@ def test_is_on_board(board_empty, position, expected):
         ((0,1), (1,2)),  # Move worker from height 2 to height 3
     ]
 )
-def test_can_move_good(board_populated, current_position, target_position):
+def test_can_move_good(board_populated: Board,
+                       current_position: tuple[int, int],
+                       target_position: tuple[int, int]):
     value = board_populated._can_move(current_position, target_position)
     assert value is True
 
@@ -105,7 +97,9 @@ def test_can_move_good(board_populated, current_position, target_position):
         ((0,0), (1,0)),  # Move worker from height 0 to height inf
     ]
 )
-def test_can_move_bad(board_populated, current_position, target_position):
+def test_can_move_bad(board_populated: Board,
+                      current_position: tuple[int, int],
+                      target_position: tuple[int, int]):
     value = board_populated._can_move(current_position, target_position)
     assert value is False
 
@@ -120,93 +114,27 @@ def test_can_move_bad(board_populated, current_position, target_position):
         ((0,1), (1,2)),  # Move worker from height 2 to height 3
     ]
 )
-def test_move_worker(board_populated, current_position, target_position):
-    worker_in_initial_position = board_populated._get_position_worker(current_position)
+def test_move_worker(board_populated: Board,
+                     current_position: tuple[int, int],
+                     target_position: tuple[int, int]):
+    worker_in_initial_position = board_populated.get_worker(current_position)
     board_populated.move_worker(current_position, target_position)
-    assert not board_populated._get_position_worker(current_position)
-    assert worker_in_initial_position is board_populated._get_position_worker(target_position)
-
-# test can_build
-
-def test_can_build_valid_move(board_populated):
-    worker_position = (0, 1)
-    build_position = (0, 2)  # Adjacent and no worker present, height not max
-    assert board_populated._can_build(worker_position, build_position) is True
-
-def test_can_build_non_adjacent_position(board_populated):
-    worker_position = (0, 0)
-    build_position = (2, 0)  # Not adjacent
-    assert board_populated._can_build(worker_position, build_position) is False
-
-def test_can_build_position_with_worker(board_populated):
-    worker_position = (0, 0)
-    build_position = (1, 1)  # Worker present
-    assert board_populated._can_build(worker_position, build_position) is False
-
-def test_can_build_max_height_reached(board_populated):
-    worker_position = (0, 0)
-    build_position = (1, 0)  # Max height (4)
-    assert board_populated._can_build(worker_position, build_position) is False
-
-def test_can_build_off_board_position(board_populated):
-    worker_position = (4, 4)
-    build_position = (5, 5)  # Off board
-    assert board_populated._can_build(worker_position, build_position) is False
-
-def test_can_build_invalid_worker_position(board_populated):
-    worker_position = (5, 5)  # Off board
-    build_position = (0, 1)
-    assert board_populated._can_build(worker_position, build_position) is False
-
-def test_can_build_valid_position_edge_of_board(board_populated):
-    worker_position = (4, 4)
-    build_position = (4, 3)  # On the edge of the board
-    assert board_populated._can_build(worker_position, build_position) is True
+    assert not board_populated.get_worker(current_position)
+    assert worker_in_initial_position is board_populated.get_worker(target_position)
 
 # test build
 
-def test_build_success(board_populated):
-    worker_position = (2, 0)
+def test_build_success(board_populated: Board):
     build_position = (2, 1)
-    
-    # Expected increase in building height
-    initial_height = board_populated._get_position_height(build_position)
-    board_populated.build(worker_position, build_position)
-    new_height = board_populated._get_position_height(build_position)
+    initial_height = board_populated.get_height(build_position)
+    board_populated.build(build_position)
+    new_height = board_populated.get_height(build_position)
 
     assert new_height == initial_height + 1
 
-def test_build_failure_dome_present(board_populated):
-    worker_position = (1, 0)
+def test_build_failure_dome_present(board_populated: Board):
+    """Trying to build on a dome, where height is 4"""
     build_position = (1, 0)
-
-    # Trying to build on a dome, where height is 4
     with pytest.raises(ValueError) as excinfo:
-        board_populated.build(worker_position, build_position)
-    assert "That is not a valid build position." in str(excinfo.value)
-
-def test_build_failure_not_adjacent(board_populated):
-    worker_position = (0, 0)
-    build_position = (4, 4)
-
-    # Trying to build on a non-adjacent position
-    with pytest.raises(ValueError) as excinfo:
-        board_populated.build(worker_position, build_position)
-    assert "That is not a valid build position." in str(excinfo.value)
-
-def test_build_max_height_reached(board_populated):
-    worker_position = (1, 2)
-    build_position = (1, 2)
-
-    # Trying to build where the current height is already at the maximum (e.g., 3)
-    with pytest.raises(ValueError) as excinfo:
-        board_populated.build(worker_position, build_position)
-    assert "That is not a valid build position." in str(excinfo.value)
-
-def test_build_worker_at_position(board_populated):
-    worker_position = (0, 0)
-    build_position = (0, 1)
-
-    with pytest.raises(ValueError) as excinfo:
-        board_populated.build(worker_position, build_position)
+        board_populated.build(build_position)
     assert "That is not a valid build position." in str(excinfo.value)

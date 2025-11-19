@@ -17,6 +17,19 @@ Building increases the height of that square by one. The move destination space 
 
 When a player's piece reaches the third level, that player wins. If a player cannot move any of their pieces, that player loses.
 
+## 🔧 Installation
+
+### Clone the Repository:
+```
+git clone https://github.com/KennethJAllen/santorini
+cd santorini
+```
+### Create Virtual Environment
+
+- Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if not already installed.
+- Sync environments
+    - `uv sync`
+
 ## ♟️ Playing the Game
 
 ### GUI
@@ -32,19 +45,6 @@ When a player's piece reaches the third level, that player wins. If a player can
 To play in the browser, visit https://www.kennethallenmath.com/santorini/.
 
 Note: This is an old version of the game and currently does not support playing against an AI.
-
-## 🔧 Installation
-
-### Clone the Repository:
-```
-git clone https://github.com/KennethJAllen/santorini
-cd santorini
-```
-### Create Virtual Environment
-
-- Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if not already installed.
-- Sync environments
-    - `uv sync`
 
 ## 🤖 PettingZoo Environment
 

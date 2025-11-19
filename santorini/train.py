@@ -414,6 +414,7 @@ def main():
 
     # Train a model against itself
     num_steps = 1_000_000
+
     train_action_mask(env_fn, model_dir, steps=num_steps, seed=0, **env_kwargs)
 
     # Evaluate 1000 games against a random agent

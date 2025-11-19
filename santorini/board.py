@@ -43,7 +43,7 @@ class Board:
             row_line = f"{y:<3}"
             for x in range(self.grid_size):
                 position = (x, y)
-                worker = self.get_position_worker(position)
+                worker = self.get_worker(position)
                 height = self.get_height(position)
 
                 # Represent capped space with "∞"
@@ -69,7 +69,7 @@ class Board:
         new_position: A tuple (x, y) indicating the new position to move the worker to.
         Returns True if the move was to a winning height, False otherwise.
         """
-        worker = self.get_position_worker(worker_position)
+        worker = self.get_worker(worker_position)
         self._set_position_worker(worker_position, Worker()) # Worker with no args represents no worker.
         self._set_position_worker(target_position, worker)
         did_move_win = self.get_height(target_position) == self.max_building_height
@@ -80,6 +80,8 @@ class Board:
         Increment the height of build_position.
         Assumes the check that the build is valid happens when the move is validated.
         """
+        if self.get_height(build_position) >= self.max_building_height + 1:
+            raise ValueError("That is not a valid build position.")
         self._state[build_position][1] += 1
 
     def place_worker(self, position: tuple[int, int], worker: Worker) -> None:
@@ -90,7 +92,7 @@ class Board:
         """Gets all valid_locations where a worker can be placed"""
         valid_actions = set()
         for i, j in product(range(self.grid_size), range(self.grid_size)):
-            if not self.get_position_worker((i, j)):
+            if not self.get_worker((i, j)):
                 action = utils.encode_space((i, j))
                 valid_actions.add(action)
         return valid_actions
@@ -142,7 +144,6 @@ class Board:
             # channels 0-4: building heights
             # Set the channel corresponding to the height to 1
             obs[i, j, height] = 1
-
             # channels 5-10: worker positions
             worker = self.get_position_worker((i, j))
             player = worker.get_player()
@@ -166,7 +167,7 @@ class Board:
                 obs[i, j, 10] = 1  # Aggregated opponent
         return obs
 
-    def get_position_worker(self, position: tuple[int, int]) -> Worker:
+    def get_worker(self, position: tuple[int, int]) -> Worker:
         """Returns the worker in the given position."""
         return self._state[position][0]
 
@@ -216,8 +217,8 @@ class Board:
             if position_height == self.max_building_height + 1:
                 continue
             # Check if there is a different worker on the target position
-            target_position_worker = self.get_position_worker(build_position)
-            if target_position_worker and not (target_position_worker is worker):
+            target_position_worker = self.get_worker(build_position)
+            if target_position_worker and target_position_worker is not worker:
                 continue
 
             build_positions.append(build_position)
@@ -248,8 +249,8 @@ class Board:
         if not utils.is_adjacent(worker_position, target_position):
             return False
 
-        current_worker = self.get_position_worker(worker_position)
-        target_worker = self.get_position_worker(target_position)
+        current_worker = self.get_worker(worker_position)
+        target_worker = self.get_worker(target_position)
         if not current_worker or target_worker:
             # check there is not a worker on the target_position,
             # and there is a worker on the worker_position
