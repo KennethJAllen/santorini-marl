@@ -1,5 +1,7 @@
 """Utility functions"""
+
 from santorini.config import GRID_SIZE
+
 DIRS = [
     (-1, -1),  # NW
     (0, -1),  # N
@@ -9,7 +11,7 @@ DIRS = [
     (0, 1),  # S
     (-1, 1),  # SW
     (-1, 0),  # W
-    ]
+]
 
 
 def is_adjacent(position1: tuple[int, int], position2: tuple[int, int]) -> bool:
@@ -26,6 +28,7 @@ def is_adjacent(position1: tuple[int, int], position2: tuple[int, int]) -> bool:
         return False
     return True
 
+
 def decode_space(space_index: int, grid_size: int = GRID_SIZE) -> tuple[int, int]:
     """
     Given an integer index for the space on the board,
@@ -37,6 +40,7 @@ def decode_space(space_index: int, grid_size: int = GRID_SIZE) -> tuple[int, int
     x = space_index % grid_size
     return x, y
 
+
 def encode_space(space_position: tuple[int, int], grid_size: int = GRID_SIZE) -> int:
     """
     Given a x, y tuple of integers representing a position of a space on the board,
@@ -47,6 +51,7 @@ def encode_space(space_position: tuple[int, int], grid_size: int = GRID_SIZE) ->
     x, y = space_position
     space_index = y * grid_size + x
     return space_index
+
 
 def decode_action(action: int, grid_size: int = GRID_SIZE) -> tuple[tuple[int, int]]:
     """
@@ -60,13 +65,13 @@ def decode_action(action: int, grid_size: int = GRID_SIZE) -> tuple[tuple[int, i
         raise ValueError(f"Action {action} is out of bounds for grid size {grid_size}.")
 
     # split into (from_index, move_dir, build_dir)
-    from_idx, rem = divmod(action, 8*8)      # from_idx in [0..24], rem in [0..63]
-    move_dir, build_dir = divmod(rem, 8)    # each in [0..7]
+    from_idx, rem = divmod(action, 8 * 8)  # from_idx in [0..24], rem in [0..63]
+    move_dir, build_dir = divmod(rem, 8)  # each in [0..7]
 
     # convert linear from_idx to (x,y)
     from_x, from_y = from_idx % grid_size, from_idx // grid_size
 
-    dx_move, dy_move   = DIRS[move_dir]
+    dx_move, dy_move = DIRS[move_dir]
     dx_build, dy_build = DIRS[build_dir]
 
     to_x = from_x + dx_move
@@ -79,6 +84,7 @@ def decode_action(action: int, grid_size: int = GRID_SIZE) -> tuple[tuple[int, i
     build_on = build_x, build_y
 
     return move_from, move_to, build_on
+
 
 def encode_action(move_build_tuple: tuple[tuple[int, int]], grid_size: int = GRID_SIZE):
     """
@@ -106,7 +112,9 @@ def encode_action(move_build_tuple: tuple[tuple[int, int]], grid_size: int = GRI
     try:
         move_dir = DIRS.index((dx_move, dy_move))
     except ValueError as e:
-        raise ValueError(f"Invalid move direction {(dx_move, dy_move)}; must be one of {DIRS}") from e
+        raise ValueError(
+            f"Invalid move direction {(dx_move, dy_move)}; must be one of {DIRS}"
+        ) from e
 
     # compute build direction
     dx_build = build_x - to_x
@@ -114,7 +122,9 @@ def encode_action(move_build_tuple: tuple[tuple[int, int]], grid_size: int = GRI
     try:
         build_dir = DIRS.index((dx_build, dy_build))
     except ValueError as e:
-        raise ValueError(f"Invalid build direction {(dx_build, dy_build)}; must be one of {DIRS}") from e
+        raise ValueError(
+            f"Invalid build direction {(dx_build, dy_build)}; must be one of {DIRS}"
+        ) from e
 
     # linearize from-square
     from_idx = from_x + from_y * grid_size
@@ -123,9 +133,11 @@ def encode_action(move_build_tuple: tuple[tuple[int, int]], grid_size: int = GRI
     action = from_idx * (8 * 8) + move_dir * 8 + build_dir
     return action
 
+
 def next_player_index(player_index: int, num_players: int) -> int:
     """Returns the index of the next player, looping back to 0"""
     return (player_index + 1) % num_players
+
 
 def previous_player_index(player_index: int, num_players: int) -> int:
     """Returns the index of the previous player, looping back to 0"""

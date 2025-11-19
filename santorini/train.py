@@ -11,7 +11,7 @@ Original author: Elliot (https://github.com/elliottower)
 
 from pathlib import Path
 import time
-from typing import Any, Dict, Optional, Type
+from typing import Optional
 
 import gymnasium as gym
 import numpy as np
@@ -22,7 +22,6 @@ from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from sb3_contrib.common.maskable.distributions import MaskableCategoricalDistribution
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
 import pettingzoo.utils
 
@@ -38,7 +37,9 @@ class StableMaskableCategoricalDistribution(MaskableCategoricalDistribution):
     Applies logit clipping and temperature scaling to prevent numerical underflow.
     """
 
-    def __init__(self, action_dim: int, temperature: float = 1.0, logit_clip: float = 10.0):
+    def __init__(
+        self, action_dim: int, temperature: float = 1.0, logit_clip: float = 10.0
+    ):
         super().__init__(action_dim)
         self.temperature = temperature
         self.logit_clip = logit_clip
@@ -48,7 +49,9 @@ class StableMaskableCategoricalDistribution(MaskableCategoricalDistribution):
         action_logits = nn.Linear(latent_dim, self.action_dim)
         return action_logits
 
-    def proba_distribution(self, action_logits: torch.Tensor, action_masks: Optional[torch.Tensor] = None) -> "StableMaskableCategoricalDistribution":
+    def proba_distribution(
+        self, action_logits: torch.Tensor, action_masks: Optional[torch.Tensor] = None
+    ) -> "StableMaskableCategoricalDistribution":
         """
         Create the distribution given its parameters (action_logits) with numerical stability improvements.
         """
@@ -62,9 +65,13 @@ class StableMaskableCategoricalDistribution(MaskableCategoricalDistribution):
         if action_masks is not None:
             # Convert to torch tensor if needed
             if isinstance(action_masks, (list, np.ndarray)):
-                action_masks = torch.tensor(action_masks, dtype=torch.bool, device=action_logits.device)
+                action_masks = torch.tensor(
+                    action_masks, dtype=torch.bool, device=action_logits.device
+                )
             elif not isinstance(action_masks, torch.Tensor):
-                action_masks = torch.tensor(action_masks, dtype=torch.bool, device=action_logits.device)
+                action_masks = torch.tensor(
+                    action_masks, dtype=torch.bool, device=action_logits.device
+                )
             elif action_masks.dtype != torch.bool:
                 action_masks = action_masks.bool()
 
@@ -73,7 +80,9 @@ class StableMaskableCategoricalDistribution(MaskableCategoricalDistribution):
             action_logits = torch.where(
                 action_masks,
                 action_logits,
-                torch.tensor(-1e8, dtype=action_logits.dtype, device=action_logits.device)
+                torch.tensor(
+                    -1e8, dtype=action_logits.dtype, device=action_logits.device
+                ),
             )
 
         self.distribution = torch.distributions.Categorical(logits=action_logits)
@@ -88,9 +97,13 @@ class StableMaskableCategoricalDistribution(MaskableCategoricalDistribution):
 
         # Convert to torch tensor if needed
         if isinstance(action_masks, (list, np.ndarray)):
-            action_masks = torch.tensor(action_masks, dtype=torch.bool, device=action_logits.device)
+            action_masks = torch.tensor(
+                action_masks, dtype=torch.bool, device=action_logits.device
+            )
         elif not isinstance(action_masks, torch.Tensor):
-            action_masks = torch.tensor(action_masks, dtype=torch.bool, device=action_logits.device)
+            action_masks = torch.tensor(
+                action_masks, dtype=torch.bool, device=action_logits.device
+            )
         elif action_masks.dtype != torch.bool:
             action_masks = action_masks.bool()
 
@@ -98,7 +111,7 @@ class StableMaskableCategoricalDistribution(MaskableCategoricalDistribution):
         action_logits = torch.where(
             action_masks,
             action_logits,
-            torch.tensor(-1e8, dtype=action_logits.dtype, device=action_logits.device)
+            torch.tensor(-1e8, dtype=action_logits.dtype, device=action_logits.device),
         )
 
         # Recreate distribution with masked logits
@@ -110,7 +123,9 @@ class StableMaskableActorCriticPolicy(MaskableActorCriticPolicy):
     Custom policy that uses the stable maskable categorical distribution.
     """
 
-    def __init__(self, *args, temperature: float = 1.5, logit_clip: float = 10.0, **kwargs):
+    def __init__(
+        self, *args, temperature: float = 1.5, logit_clip: float = 10.0, **kwargs
+    ):
         self.temperature = temperature
         self.logit_clip = logit_clip
         super().__init__(*args, **kwargs)
@@ -126,7 +141,7 @@ class StableMaskableActorCriticPolicy(MaskableActorCriticPolicy):
         self.action_dist = StableMaskableCategoricalDistribution(
             self.action_space.n,
             temperature=self.temperature,
-            logit_clip=self.logit_clip
+            logit_clip=self.logit_clip,
         )
 
 
@@ -141,10 +156,10 @@ class DebugCallback(BaseCallback):
     def _on_step(self):
         self.step_count += 1
         # Access the current observation and action mask
-        if hasattr(self.training_env, 'get_attr'):
+        if hasattr(self.training_env, "get_attr"):
             try:
-                masks = self.training_env.env_method('action_mask')
-                obs = self.locals.get('obs_tensor', None)
+                masks = self.training_env.env_method("action_mask")
+                # obs = self.locals.get("obs_tensor", None)
 
                 if masks:
                     mask = masks[0]
@@ -154,11 +169,10 @@ class DebugCallback(BaseCallback):
                     if self.step_count % 1000 == 0:
                         status_msg = f"Step {self.step_count}: Valid actions: {num_valid}/{len(mask)}"
                         if self.last_entropy_loss is not None:
-                            status_msg += f", Entropy loss: {self.last_entropy_loss:.3f}"
+                            status_msg += (
+                                f", Entropy loss: {self.last_entropy_loss:.3f}"
+                            )
                         print(status_msg)
-
-                    # if num_valid < 10:
-                    #     print(f"  Warning: Very few valid actions! Mask: {np.where(mask)[0]}")
 
             except Exception as e:
                 if self.step_count % 1000 == 0:
@@ -169,16 +183,20 @@ class DebugCallback(BaseCallback):
     def _on_rollout_end(self):
         """Called at the end of each rollout to track entropy."""
         # Try to get the entropy loss from the logger
-        if hasattr(self.model, 'logger') and self.model.logger is not None:
+        if hasattr(self.model, "logger") and self.model.logger is not None:
             try:
                 # Get the last recorded entropy loss
-                if 'train/entropy_loss' in self.model.logger.name_to_value:
-                    self.last_entropy_loss = self.model.logger.name_to_value['train/entropy_loss']
+                if "train/entropy_loss" in self.model.logger.name_to_value:
+                    self.last_entropy_loss = self.model.logger.name_to_value[
+                        "train/entropy_loss"
+                    ]
 
                     # Warn if entropy is getting too negative (policy too deterministic)
                     # For sparse action spaces (8-50 valid actions out of 1600), entropy around -2 to -4 is expected
                     if self.last_entropy_loss < -4.5:
-                        print(f"  ⚠️  WARNING: Entropy loss is very negative ({self.last_entropy_loss:.3f}) - policy may be too deterministic!")
+                        print(
+                            f"  ⚠️  WARNING: Entropy loss is very negative ({self.last_entropy_loss:.3f}) - policy may be too deterministic!"
+                        )
                     elif self.step_count % 5000 == 0:
                         print(f"  Entropy loss: {self.last_entropy_loss:.3f}")
             except Exception:
@@ -236,25 +254,20 @@ class SB3ActionMaskWrapper(pettingzoo.utils.BaseWrapper, gym.Env):
 
 def mask_fn(env):
     mask = env.action_mask()
-    num_valid = np.sum(mask)
-    total_actions = len(mask)
-
-    # Print diagnostic information periodically or when there are few valid actions
-    # if num_valid < 10:
-    #     print(f"\n=== MASK WARNING ===")
-    #     print(f"Valid actions: {num_valid}/{total_actions}")
-    #     print(f"Valid action indices: {np.where(mask)[0]}")
-    #     print(f"Current agent: {env.unwrapped.agent_selection}")
-    #     print(f"===================\n")
-
-    # Ensure there is at least one valid action
     assert any(mask), f"No valid actions! Agent: {env.unwrapped.agent_selection}"
 
     return mask
 
 
-def train_action_mask(env_fn, model_dir: Path, steps=10_000, seed=0,
-                      temperature=1.5, logit_clip=10.0, **env_kwargs):
+def train_action_mask(
+    env_fn,
+    model_dir: Path,
+    steps=10_000,
+    seed=0,
+    temperature=1.5,
+    logit_clip=10.0,
+    **env_kwargs,
+):
     """
     Train a single model to play as each agent in a zero-sum game environment using invalid action masking.
 
@@ -265,7 +278,9 @@ def train_action_mask(env_fn, model_dir: Path, steps=10_000, seed=0,
     env = env_fn(**env_kwargs)
 
     print(f"Starting training on {str(env.metadata['name'])}.")
-    print(f"Using temperature={temperature}, logit_clip={logit_clip} for numerical stability")
+    print(
+        f"Using temperature={temperature}, logit_clip={logit_clip} for numerical stability"
+    )
 
     # Custom wrapper to convert PettingZoo envs to work with SB3 action masking
     env = SB3ActionMaskWrapper(env)
@@ -285,17 +300,17 @@ def train_action_mask(env_fn, model_dir: Path, steps=10_000, seed=0,
         StableMaskableActorCriticPolicy,
         env,
         policy_kwargs=policy_kwargs,
-        learning_rate=1e-4,      # Reduced from 3e-4 for more stable training
-        n_steps=2048,            # Collect more steps before updating (helps with sparse rewards)
-        batch_size=512,          # Larger batch size for stability
-        n_epochs=10,             # Number of optimization epochs per update
-        gamma=0.99,              # Discount factor (important for long games)
-        gae_lambda=0.95,         # Generalized Advantage Estimation parameter
-        clip_range=0.2,          # PPO clipping parameter
-        ent_coef=0.2,            # Increased to 0.2 to maintain exploration with sparse action space
-        vf_coef=0.5,             # Value function coefficient
-        max_grad_norm=0.5,       # Gradient clipping
-        verbose=1
+        learning_rate=1e-4,  # Reduced from 3e-4 for more stable training
+        n_steps=2048,  # Collect more steps before updating (helps with sparse rewards)
+        batch_size=512,  # Larger batch size for stability
+        n_epochs=10,  # Number of optimization epochs per update
+        gamma=0.99,  # Discount factor (important for long games)
+        gae_lambda=0.95,  # Generalized Advantage Estimation parameter
+        clip_range=0.2,  # PPO clipping parameter
+        ent_coef=0.2,  # Increased to 0.2 to maintain exploration with sparse action space
+        vf_coef=0.5,  # Value function coefficient
+        max_grad_norm=0.5,  # Gradient clipping
+        verbose=1,
     )
     model.set_random_seed(seed)
 
@@ -306,7 +321,7 @@ def train_action_mask(env_fn, model_dir: Path, steps=10_000, seed=0,
     except ValueError as e:
         print("\n=== ERROR OCCURRED DURING TRAINING ===")
         print(f"Error: {e}")
-        print(f"\nCurrent environment state:")
+        print("\nCurrent environment state:")
         try:
             print(f"  Agent: {env.unwrapped.agent_selection}")
             current_mask = env.action_mask()
@@ -317,14 +332,18 @@ def train_action_mask(env_fn, model_dir: Path, steps=10_000, seed=0,
             # Try to get the current observation
             obs = env.observe(env.unwrapped.agent_selection)
             print(f"  Observation shape: {obs.shape}")
-            print(f"  Observation stats: min={obs.min()}, max={obs.max()}, mean={obs.mean()}")
+            print(
+                f"  Observation stats: min={obs.min()}, max={obs.max()}, mean={obs.mean()}"
+            )
         except Exception as inner_e:
             print(f"  Could not retrieve environment state: {inner_e}")
 
         print("=" * 40)
         raise
 
-    save_path = model_dir / f"{env.unwrapped.metadata['name']}_{time.strftime('%Y%m%d-%H%M%S')}"
+    save_path = (
+        model_dir / f"{env.unwrapped.metadata['name']}_{time.strftime('%Y%m%d-%H%M%S')}"
+    )
     model.save(save_path)
 
     print(f"Model has been saved to {save_path}")
@@ -334,7 +353,9 @@ def train_action_mask(env_fn, model_dir: Path, steps=10_000, seed=0,
     env.close()
 
 
-def eval_action_mask(env_fn, model_dir: Path, num_games: int=100, render_mode:str=None, **env_kwargs):
+def eval_action_mask(
+    env_fn, model_dir: Path, num_games: int = 100, render_mode: str = None, **env_kwargs
+):
     # Evaluate a trained agent vs a random agent
     env = env_fn(render_mode=render_mode, **env_kwargs)
 
@@ -346,8 +367,8 @@ def eval_action_mask(env_fn, model_dir: Path, num_games: int=100, render_mode:st
         env_name = env.metadata["name"]
         latest_policy = max(
             model_dir.glob(f"{env_name}*.zip"),
-            key=lambda p: p.stat().st_ctime,   # creation time
-            )
+            key=lambda p: p.stat().st_ctime,  # creation time
+        )
     except ValueError:
         print("Policy not found.")
         return
@@ -388,7 +409,11 @@ def eval_action_mask(env_fn, model_dir: Path, num_games: int=100, render_mode:st
                     act = env.action_space(agent).sample(action_mask)
                 else:
                     # Note: PettingZoo expects integer actions
-                    act = int(model.predict(observation, action_masks=action_mask, deterministic=True)[0])
+                    act = int(
+                        model.predict(
+                            observation, action_masks=action_mask, deterministic=True
+                        )[0]
+                    )
             env.step(act)
             if render_mode == "rgb_array":
                 env.render()
@@ -406,6 +431,7 @@ def eval_action_mask(env_fn, model_dir: Path, num_games: int=100, render_mode:st
     print("Final scores: ", scores)
     return round_rewards, total_rewards, winrate, scores
 
+
 def main():
     env_fn = santorini_env
     env_kwargs = {}
@@ -421,7 +447,9 @@ def main():
     eval_action_mask(env_fn, model_dir, num_games=500, render_mode=None, **env_kwargs)
 
     # Watch two games vs a random agent
-    eval_action_mask(env_fn, model_dir, num_games=2, render_mode="rgb_array", **env_kwargs)
+    eval_action_mask(
+        env_fn, model_dir, num_games=2, render_mode="rgb_array", **env_kwargs
+    )
 
 
 if __name__ == "__main__":

@@ -1,5 +1,7 @@
 """Defines the Worker and Player classes."""
+
 from __future__ import annotations
+
 
 class Worker:
     """Worker class to represent a player's worker on the board."""
@@ -8,7 +10,7 @@ class Worker:
         """
         Initializes a new worker with a player, an identifier, and an initial position on the board.
         Default values represent no worker.
-        
+
         player: The player who owns this worker.
         worker_id: An identifier to distinguish between a player's workers (e.g., 1 or 2).
         position: The position that the worker is on.
@@ -17,7 +19,6 @@ class Worker:
         self.position: tuple[int, int] = None
         self._id: int = worker_id
         self._player: Player = player
-
 
     def __bool__(self):
         return bool(self._player or self._id)
@@ -43,9 +44,10 @@ class Worker:
         """Returns the player that the worker belongs to."""
         return self._player
 
-    def set_position(self, position: tuple[int,int]) -> None:
+    def set_position(self, position: tuple[int, int]) -> None:
         """Set the worker position."""
         self.position = position
+
 
 class Player:
     """Player class to manage player actions and workers."""
@@ -79,4 +81,6 @@ class Player:
         for worker in self.workers:
             if worker.get_id() == worker_id:
                 return worker
-        raise ValueError(f"Player does not have any workers with worker id: {worker_id}")
+        raise ValueError(
+            f"Player does not have any workers with worker id: {worker_id}"
+        )

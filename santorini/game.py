@@ -1,27 +1,34 @@
 """Main Santorini game state logic"""
+
 import enum
 from santorini.board import Board
 from santorini.player import Player, Worker
 from santorini import utils
 from santorini.config import NUM_WORKERS
 
+
 class GameState(enum.Enum):
     """Encodes finite game states."""
+
     PLAYER_SELECT = 1
     SETUP = 2
     PLAYING = 3
     GAME_OVER = 4
 
+
 class Game:
     """Game logic, setup, and main loop."""
+
     def __init__(self, num_workers: int = NUM_WORKERS):
-        self.board: Board = Board() # The game board, an instance of the Board class
+        self.board: Board = Board()  # The game board, an instance of the Board class
         self.state: GameState = GameState.PLAYER_SELECT
         self.valid_actions: set[int] = {2, 3}
         self._num_workers: int = num_workers
-        self.players: list[Player] = [] # List of Player objects participating in the game
+        self.players: list[
+            Player
+        ] = []  # List of Player objects participating in the game
         self.current_player_idx: int = 0  # Index to keep track of whose turn it is
-        self.winner: Player | None = None # the winner of the game
+        self.winner: Player | None = None  # the winner of the game
 
     def reset(self) -> None:
         """Sets the board back to start."""
@@ -30,14 +37,14 @@ class Game:
         self.valid_actions = {2, 3}
         self.players = []
         self.current_player_idx = 0
-        self.winner = None # the winner of the game
+        self.winner = None  # the winner of the game
 
     def step(self, action: int) -> None:
         """
         Updates the game with the given action.
         When in the player select phase, the action is an integer representing the number of players in the game.
         When in the setup phase, the action represents a location to place a piece.
-        When in the playing phase, 
+        When in the playing phase,
         """
         if self.state == GameState.PLAYER_SELECT:
             self._handle_player_select(action)
@@ -60,7 +67,9 @@ class Game:
                 # TODO: fix this logic for 3 players.
                 # If a player has no valid moves, their pieces should be removed from the game.
                 # Then, if there is 1 player left, the winner should be declared.
-                previous_player_index = utils.previous_player_index(self.current_player_idx, len(self.players))
+                previous_player_index = utils.previous_player_index(
+                    self.current_player_idx, len(self.players)
+                )
                 self.winner = self.players[previous_player_index]
                 self.state = GameState.GAME_OVER
 
@@ -71,13 +80,17 @@ class Game:
     def current_player(self) -> Player:
         """Returns the current player."""
         if self.players is None:
-            raise ValueError("Cannot get the current player. Players are not initialized.")
+            raise ValueError(
+                "Cannot get the current player. Players are not initialized."
+            )
         return self.players[self.current_player_idx]
 
     def _handle_player_select(self, action: int) -> None:
         """Action is the number of players chosen."""
         if action not in self.valid_actions:
-            raise ValueError(f"Number of players must be one of {', '.join(map(str,self.valid_actions))}. Instead got: {action}")
+            raise ValueError(
+                f"Number of players must be one of {', '.join(map(str, self.valid_actions))}. Instead got: {action}"
+            )
         num_players = action
         self._init_players(num_players)
         self.state = GameState.SETUP
@@ -88,7 +101,7 @@ class Game:
         Takes an action which is a position index from 0 to 25.
         Players alternate placing one worker at a time.
         """
-        if not action in self.valid_actions:
+        if action not in self.valid_actions:
             raise ValueError(f"Invalid action: {utils.decode_action(action)}")
 
         current_player = self.current_player()
@@ -99,13 +112,17 @@ class Game:
         self.board.place_worker(position, new_worker)
 
         # Check if all players have placed all their workers
-        all_workers_placed = all(len(player.workers) >= self._num_workers for player in self.players)
+        all_workers_placed = all(
+            len(player.workers) >= self._num_workers for player in self.players
+        )
         if all_workers_placed:
             self.state = GameState.PLAYING
             self.current_player_idx = 0
         else:
             # Alternate to next player after each worker placement
-            self.current_player_idx = utils.next_player_index(self.current_player_idx, len(self.players))
+            self.current_player_idx = utils.next_player_index(
+                self.current_player_idx, len(self.players)
+            )
 
     def _handle_turn(self, action: int) -> None:
         """
@@ -124,7 +141,9 @@ class Game:
         else:
             self.board.build(build_on)
             # cycle through player turns
-            self.current_player_idx = utils.next_player_index(self.current_player_idx, len(self.players))
+            self.current_player_idx = utils.next_player_index(
+                self.current_player_idx, len(self.players)
+            )
 
     def _init_players(self, num_players) -> None:
         """Initializes the players in the game."""
@@ -144,9 +163,9 @@ class Game:
         - the valid actions are the integers 2 or 3, representing the number of players in the game.
         """
         if self.state == GameState.PLAYER_SELECT:
-            self.valid_actions =  {2, 3}  # Valid actions are the number of players
+            self.valid_actions = {2, 3}  # Valid actions are the number of players
         elif self.state == GameState.SETUP:
-            self.valid_actions =  self.board.get_valid_placement_actions()
+            self.valid_actions = self.board.get_valid_placement_actions()
         elif self.state == GameState.PLAYING:
             player = self.current_player()
             valid_actions = set()
@@ -157,6 +176,7 @@ class Game:
             self.valid_actions = valid_actions
         else:
             raise ValueError(f"Cannot get valid actions in state: {self.state}")
+
 
 if __name__ == "__main__":
     g = Game()

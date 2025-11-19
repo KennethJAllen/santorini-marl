@@ -1,4 +1,5 @@
 """Renders the game using Pygame."""
+
 from pathlib import Path
 import numpy as np
 import pygame
@@ -6,11 +7,14 @@ from santorini.game import Game
 from santorini import utils
 from santorini import config
 
+
 class PygameRenderer:
-    def __init__(self,
-                 grid_size: int = config.GRID_SIZE,
-                 asset_dir: Path = Path("images/assets"),
-                 screen_size=600):
+    def __init__(
+        self,
+        grid_size: int = config.GRID_SIZE,
+        asset_dir: Path = Path("images/assets"),
+        screen_size=600,
+    ):
         pygame.init()
         self.board_size = grid_size
         self.screen = pygame.display.set_mode((screen_size, screen_size))
@@ -49,15 +53,17 @@ class PygameRenderer:
         # Draw grid
         for x in range(self.board_size + 1):
             pygame.draw.line(
-                self.screen, (0, 0, 0),
+                self.screen,
+                (0, 0, 0),
                 (x * self.cell_size, 0),
-                (x * self.cell_size, self.board_size * self.cell_size)
+                (x * self.cell_size, self.board_size * self.cell_size),
             )
         for y in range(self.board_size + 1):
             pygame.draw.line(
-                self.screen, (0, 0, 0),
+                self.screen,
+                (0, 0, 0),
                 (0, y * self.cell_size),
-                (self.board_size * self.cell_size, y * self.cell_size)
+                (self.board_size * self.cell_size, y * self.cell_size),
             )
 
         # Draw buildings and workers.
@@ -66,7 +72,7 @@ class PygameRenderer:
 
         # Draw buildings first (channels 0-4: empty, height1, height2, height3, dome)
         for channel_idx in range(5):  # 0-4 are building channels
-            channel = obs[:,:,channel_idx]
+            channel = obs[:, :, channel_idx]
             for (x, y), value in np.ndenumerate(channel):
                 if not value:
                     continue
@@ -85,7 +91,7 @@ class PygameRenderer:
         }
 
         for channel_idx in range(5, 9):  # channels 5-8 are individual workers
-            channel = obs[:,:,channel_idx]
+            channel = obs[:, :, channel_idx]
             for (x, y), value in np.ndenumerate(channel):
                 if not value:
                     continue
@@ -155,8 +161,10 @@ class PygameRenderer:
             self.highlight_squares = [
                 utils.decode_action(a)[2]
                 for a in game.valid_actions
-                if (utils.decode_action(a)[0] == self.selected_worker
-                    and utils.decode_action(a)[1] == self._pending_move)
+                if (
+                    utils.decode_action(a)[0] == self.selected_worker
+                    and utils.decode_action(a)[1] == self._pending_move
+                )
             ]
             return None
 
@@ -164,7 +172,11 @@ class PygameRenderer:
         if self._pending_move is not None and move in self.highlight_squares:
             for a in game.valid_actions:
                 frm, to, build = utils.decode_action(a)
-                if frm == self.selected_worker and to == self._pending_move and build == move:
+                if (
+                    frm == self.selected_worker
+                    and to == self._pending_move
+                    and build == move
+                ):
                     action = a
                     # reset
                     self.selected_worker = None

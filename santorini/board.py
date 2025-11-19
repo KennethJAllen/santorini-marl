@@ -1,4 +1,5 @@
 """Defines Board class."""
+
 from collections import defaultdict
 from itertools import product
 import numpy as np
@@ -6,10 +7,13 @@ from santorini.player import Worker
 from santorini import utils
 from santorini.config import GRID_SIZE, MAX_BUILDING_HEIGHT
 
+
 class Board:
     """Board class to handle the game board, buildings, board state, and displaying the board."""
 
-    def __init__(self, grid_size = GRID_SIZE, max_building_height = MAX_BUILDING_HEIGHT, state = None):
+    def __init__(
+        self, grid_size=GRID_SIZE, max_building_height=MAX_BUILDING_HEIGHT, state=None
+    ):
         """
         Initializes the game board.
 
@@ -62,7 +66,9 @@ class Board:
         lines.append("")
         return "\n".join(lines)
 
-    def move_worker(self, worker_position: tuple[int, int], target_position: tuple[int, int]) -> bool:
+    def move_worker(
+        self, worker_position: tuple[int, int], target_position: tuple[int, int]
+    ) -> bool:
         """
         Moves a worker to new_position.
         worker: A Worker to move.
@@ -70,12 +76,14 @@ class Board:
         Returns True if the move was to a winning height, False otherwise.
         """
         worker = self.get_worker(worker_position)
-        self._set_position_worker(worker_position, Worker()) # Worker with no args represents no worker.
+        self._set_position_worker(
+            worker_position, Worker()
+        )  # Worker with no args represents no worker.
         self._set_position_worker(target_position, worker)
         did_move_win = self.get_height(target_position) == self.max_building_height
         return did_move_win
 
-    def build(self, build_position: tuple[int, int])  -> None:
+    def build(self, build_position: tuple[int, int]) -> None:
         """
         Increment the height of build_position.
         Assumes the check that the build is valid happens when the move is validated.
@@ -107,8 +115,12 @@ class Board:
         worker_position = worker.position
         valid_moves = self._get_valid_moves_from_position(worker_position)
         for move_position in valid_moves:
-            for build_position in self._valid_move_then_build_positions(worker, move_position):
-                action = utils.encode_action((worker_position, move_position, build_position))
+            for build_position in self._valid_move_then_build_positions(
+                worker, move_position
+            ):
+                action = utils.encode_action(
+                    (worker_position, move_position, build_position)
+                )
                 valid_actions.add(action)
         return valid_actions
 
@@ -176,12 +188,14 @@ class Board:
         If the position is capped, returns max height + 1."""
         return self._state[position][1]
 
-    def _get_valid_moves_from_position(self, position: tuple[int, int]) -> list[tuple[int, int]]:
+    def _get_valid_moves_from_position(
+        self, position: tuple[int, int]
+    ) -> list[tuple[int, int]]:
         """Returns set of valid moves that a worker in position can move to."""
         x, y = position
         # check all adjacent positions for valid moves
         valid_moves = []
-        for i, j in product(range(-1,2), range(-1,2)):
+        for i, j in product(range(-1, 2), range(-1, 2)):
             target_position = x + i, y + j
             if target_position == position:
                 continue
@@ -189,7 +203,9 @@ class Board:
                 valid_moves.append(target_position)
         return valid_moves
 
-    def _valid_move_then_build_positions(self, worker: Worker, position: tuple[int, int]) -> list[tuple[int,int]]:
+    def _valid_move_then_build_positions(
+        self, worker: Worker, position: tuple[int, int]
+    ) -> list[tuple[int, int]]:
         """
         If the worker moves to the given position,
         returns a list of valid positions for the worker to build.
@@ -199,7 +215,7 @@ class Board:
         build_positions = []
         x, y = position
         # check all adjacent positions for valid builds
-        for i, j in product(range(-1,2), range(-1,2)):
+        for i, j in product(range(-1, 2), range(-1, 2)):
             build_position = x + i, y + j
             # Must build on board
             if not self._is_on_board(build_position):
@@ -229,7 +245,9 @@ class Board:
         self._state[position][0] = worker
         worker.set_position(position)
 
-    def _can_move(self, worker_position: tuple[int, int], target_position: tuple[int,int]) -> bool:
+    def _can_move(
+        self, worker_position: tuple[int, int], target_position: tuple[int, int]
+    ) -> bool:
         """
         Checks if a move from worker_position to target_position is valid.
 
@@ -242,7 +260,9 @@ class Board:
         2) The current position has a worker and the target position does not have a worker
         3) The height of the target_position is at most 1 more than the height of worker_position
         """
-        if not self._is_on_board(worker_position) or not self._is_on_board(target_position):
+        if not self._is_on_board(worker_position) or not self._is_on_board(
+            target_position
+        ):
             # ensure that positions are on board
             return False
 

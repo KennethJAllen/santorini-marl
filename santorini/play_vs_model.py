@@ -5,13 +5,13 @@ from sb3_contrib.common.wrappers import ActionMasker
 
 from santorini.env import santorini_env
 from santorini.renderer import PygameRenderer
+
 # Import both the wrappers and the custom stable policy classes
 from santorini.train import (
     SB3ActionMaskWrapper,
     mask_fn,
-    StableMaskableActorCriticPolicy,
-    StableMaskableCategoricalDistribution
 )
+
 
 def play(model_path: Path, human_player: int = 0):
     # 1) Create the raw PettingZoo env
@@ -23,7 +23,9 @@ def play(model_path: Path, human_player: int = 0):
     mask_env = ActionMasker(sb3_env, mask_fn)
 
     # 3) Turn it into a single‐env VecEnv
-    vec_env = ss.stable_baselines3_vec_env_v0(mask_env, num_envs=1, multiprocessing=False)
+    vec_env = ss.stable_baselines3_vec_env_v0(
+        mask_env, num_envs=1, multiprocessing=False
+    )
 
     # 4) Load your trained MaskablePPO
     # Try to load the model - if it's an old model without stable policy, warn the user
@@ -56,9 +58,7 @@ def play(model_path: Path, human_player: int = 0):
             # let SB3 pick for us (pass the mask in)
             current_mask = mask_env.action_masks()  # from SB3ActionMaskWrapper
             vec_action, _ = model.predict(
-                vec_obs,
-                action_masks=[current_mask],
-                deterministic=True
+                vec_obs, action_masks=[current_mask], deterministic=True
             )
             action = int(vec_action[0])
 
@@ -69,6 +69,7 @@ def play(model_path: Path, human_player: int = 0):
 
     print("Game over!")
 
+
 def main():
     models = sorted(Path(".").glob("models/santorini_*.zip"))
     if not models:
@@ -76,6 +77,7 @@ def main():
     latest = models[-1]
     print(f"Loading {latest}")
     play(latest)
+
 
 if __name__ == "__main__":
     main()
