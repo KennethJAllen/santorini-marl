@@ -1,4 +1,4 @@
-# Santorini Multi-Agent RL
+# Santorini Multi-Agent Reinforcement Learning
 
 ## Summary
 
