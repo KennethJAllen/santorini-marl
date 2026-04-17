@@ -264,8 +264,8 @@ def train_action_mask(
     model_dir: Path,
     steps=10_000,
     seed=0,
-    temperature=1.5,
-    logit_clip=10.0,
+    temperature=1.0,
+    logit_clip=50.0,
     **env_kwargs,
 ):
     """
@@ -307,7 +307,7 @@ def train_action_mask(
         gamma=0.99,  # Discount factor (important for long games)
         gae_lambda=0.95,  # Generalized Advantage Estimation parameter
         clip_range=0.2,  # PPO clipping parameter
-        ent_coef=0.2,  # Increased to 0.2 to maintain exploration with sparse action space
+        ent_coef=0.01,  # SB3 default; shaped rewards and masking already bias exploration enough
         vf_coef=0.5,  # Value function coefficient
         max_grad_norm=0.5,  # Gradient clipping
         verbose=1,

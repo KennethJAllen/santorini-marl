@@ -157,7 +157,7 @@ class Board:
             # Set the channel corresponding to the height to 1
             obs[i, j, height] = 1
             # channels 5-10: worker positions
-            worker = self.get_position_worker((i, j))
+            worker = self.get_worker((i, j))
             player = worker.get_player()
             if player is None:
                 continue
