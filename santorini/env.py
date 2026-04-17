@@ -298,6 +298,8 @@ class SantoriniEnv(AECEnv):
             if self.render_mode == "human":
                 return self.renderer.get_human_action(self.game)
             else:
+                # "rgb_array" here paints the pygame window rather than
+                # returning an ndarray (used for visualization, not capture).
                 return None
         else:
             raise ValueError(

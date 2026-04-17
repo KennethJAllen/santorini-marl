@@ -27,9 +27,6 @@ import pettingzoo.utils
 
 from santorini.env import santorini_env
 
-# Enable anomaly detection for debugging
-torch.autograd.set_detect_anomaly(True)
-
 
 class StableMaskableCategoricalDistribution(MaskableCategoricalDistribution):
     """
@@ -445,10 +442,16 @@ def train_action_mask(
     print(f"Finished training on {str(env.unwrapped.metadata['name'])}.\n")
 
     env.close()
+    return save_path
 
 
 def eval_action_mask(
-    env_fn, model_dir: Path, num_games: int = 100, render_mode: str = None, **env_kwargs
+    env_fn,
+    model_dir: Path,
+    num_games: int = 100,
+    render_mode: str = None,
+    model_path: Path | None = None,
+    **env_kwargs,
 ):
     # Evaluate a trained agent vs a random agent
     env = env_fn(render_mode=render_mode, **env_kwargs)
@@ -457,21 +460,21 @@ def eval_action_mask(
         f"Starting evaluation vs a random agent. Trained agent will play as {env.possible_agents[1]}."
     )
 
-    try:
-        env_name = env.metadata["name"]
-        latest_policy = max(
-            model_dir.glob(f"{env_name}*.zip"),
-            key=lambda p: p.stat().st_ctime,  # creation time
-        )
-    except ValueError:
-        print("Policy not found.")
-        return
+    if model_path is None:
+        try:
+            env_name = env.metadata["name"]
+            model_path = max(
+                model_dir.glob(f"{env_name}*.zip"),
+                key=lambda p: p.stat().st_ctime,  # creation time
+            )
+        except ValueError:
+            print("Policy not found.")
+            return
 
-    model = MaskablePPO.load(latest_policy)
+    model = MaskablePPO.load(model_path)
 
-    scores = {agent: 0 for agent in env.possible_agents}
-    total_rewards = {agent: 0 for agent in env.possible_agents}
-    round_rewards = []
+    p0, p1 = env.possible_agents
+    wins = losses = draws = 0
 
     for i in range(num_games):
         env.reset(seed=i)
@@ -483,23 +486,17 @@ def eval_action_mask(
             observation, action_mask = obs.values()
 
             if termination or truncation:
-                # If there is a winner, keep track, otherwise don't change the scores (tie)
-                if (
-                    env.rewards[env.possible_agents[0]]
-                    != env.rewards[env.possible_agents[1]]
-                ):
-                    winner = max(env.rewards, key=env.rewards.get)
-                    scores[winner] += env.rewards[
-                        winner
-                    ]  # only tracks the largest reward (winner of game)
-                # Also track negative and positive rewards (penalizes illegal moves)
-                for a in env.possible_agents:
-                    total_rewards[a] += env.rewards[a]
-                # List of rewards by round, for reference
-                round_rewards.append(env.rewards)
+                r0 = env.rewards[p0]
+                r1 = env.rewards[p1]
+                if r1 > r0:
+                    wins += 1
+                elif r0 > r1:
+                    losses += 1
+                else:
+                    draws += 1
                 break
             else:
-                if agent == env.possible_agents[0]:
+                if agent == p0:
                     act = env.action_space(agent).sample(action_mask)
                 else:
                     # Note: PettingZoo expects integer actions
@@ -514,16 +511,11 @@ def eval_action_mask(
                 time.sleep(0.5)
     env.close()
 
-    # Avoid dividing by zero
-    if sum(scores.values()) == 0:
-        winrate = 0
-    else:
-        winrate = scores[env.possible_agents[1]] / sum(scores.values())
-    print("Rewards by round: ", round_rewards)
-    print("Total rewards (incl. negative rewards): ", total_rewards)
-    print("Winrate: ", winrate)
-    print("Final scores: ", scores)
-    return round_rewards, total_rewards, winrate, scores
+    decisive = wins + losses
+    winrate = wins / decisive if decisive else 0.0
+    print(f"Wins: {wins}, Losses: {losses}, Draws: {draws}")
+    print(f"Winrate (decisive games): {winrate:.2%}")
+    return wins, losses, draws, winrate
 
 
 def main():
@@ -551,7 +543,7 @@ def main():
     model_dir = Path.cwd() / "models"
     model_dir.mkdir(exist_ok=True)
 
-    train_action_mask(
+    save_path = train_action_mask(
         env_fn,
         model_dir,
         steps=args.steps,
@@ -562,12 +554,22 @@ def main():
     )
 
     eval_action_mask(
-        env_fn, model_dir, num_games=args.final_eval_games, render_mode=None, **env_kwargs
+        env_fn,
+        model_dir,
+        num_games=args.final_eval_games,
+        render_mode=None,
+        model_path=save_path,
+        **env_kwargs,
     )
 
     if args.watch_games > 0:
         eval_action_mask(
-            env_fn, model_dir, num_games=args.watch_games, render_mode="rgb_array", **env_kwargs
+            env_fn,
+            model_dir,
+            num_games=args.watch_games,
+            render_mode="rgb_array",
+            model_path=save_path,
+            **env_kwargs,
         )
 
 
