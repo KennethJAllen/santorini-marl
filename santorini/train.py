@@ -259,6 +259,76 @@ def mask_fn(env):
     return mask
 
 
+class WinrateEvalCallback(BaseCallback):
+    """Plays N games vs a random opponent every `eval_freq` env steps and logs
+    `eval/winrate_vs_random` and `eval/mean_ep_length` to the SB3 logger
+    (i.e. stdout + TensorBoard when enabled). Model plays as player_1 to match
+    the convention in `eval_action_mask`."""
+
+    def __init__(
+        self,
+        env_fn,
+        env_kwargs=None,
+        eval_freq: int = 50_000,
+        n_games: int = 30,
+        verbose: int = 0,
+    ):
+        super().__init__(verbose)
+        self.env_fn = env_fn
+        self.env_kwargs = env_kwargs or {}
+        self.eval_freq = eval_freq
+        self.n_games = n_games
+
+    def _on_step(self) -> bool:
+        if self.n_calls % self.eval_freq == 0:
+            winrate, avg_len = self._evaluate()
+            self.logger.record("eval/winrate_vs_random", winrate)
+            self.logger.record("eval/mean_ep_length", avg_len)
+            if self.verbose:
+                print(
+                    f"[eval @ step {self.num_timesteps}] "
+                    f"winrate_vs_random={winrate:.2%} mean_ep_len={avg_len:.1f}"
+                )
+        return True
+
+    def _evaluate(self) -> tuple[float, float]:
+        env = self.env_fn(**self.env_kwargs)
+        wins = 0
+        decisive = 0
+        total_len = 0
+        for seed in range(self.n_games):
+            env.reset(seed=seed)
+            ep_len = 0
+            for agent in env.agent_iter():
+                obs, _reward, term, trunc, _info = env.last()
+                if term or trunc:
+                    r0 = env.rewards[env.possible_agents[0]]
+                    r1 = env.rewards[env.possible_agents[1]]
+                    if r0 != r1:
+                        decisive += 1
+                        if r1 > r0:
+                            wins += 1
+                    break
+                observation, action_mask = obs["observation"], obs["action_mask"]
+                if agent == env.possible_agents[0]:
+                    act = env.action_space(agent).sample(action_mask)
+                else:
+                    act = int(
+                        self.model.predict(
+                            observation,
+                            action_masks=action_mask,
+                            deterministic=True,
+                        )[0]
+                    )
+                env.step(act)
+                ep_len += 1
+            total_len += ep_len
+        env.close()
+        winrate = wins / decisive if decisive else 0.0
+        avg_len = total_len / self.n_games
+        return winrate, avg_len
+
+
 def train_action_mask(
     env_fn,
     model_dir: Path,
@@ -266,6 +336,8 @@ def train_action_mask(
     seed=0,
     temperature=1.0,
     logit_clip=50.0,
+    eval_freq: int = 50_000,
+    n_eval_games: int = 30,
     **env_kwargs,
 ):
     """
@@ -295,6 +367,9 @@ def train_action_mask(
         "logit_clip": logit_clip,
     }
 
+    tb_log_dir = model_dir / "tb"
+    run_name = f"santorini_{time.strftime('%Y%m%d-%H%M%S')}"
+
     # MaskablePPO with our numerically stable policy
     model = MaskablePPO(
         StableMaskableActorCriticPolicy,
@@ -310,14 +385,33 @@ def train_action_mask(
         ent_coef=0.01,  # SB3 default; shaped rewards and masking already bias exploration enough
         vf_coef=0.5,  # Value function coefficient
         max_grad_norm=0.5,  # Gradient clipping
+        tensorboard_log=str(tb_log_dir),
         verbose=1,
     )
     model.set_random_seed(seed)
 
-    # Train with debugging callback and error handling
+    callbacks = [
+        DebugCallback(),
+        WinrateEvalCallback(
+            env_fn,
+            env_kwargs=env_kwargs,
+            eval_freq=eval_freq,
+            n_games=n_eval_games,
+            verbose=1,
+        ),
+    ]
+
+    # Train with debugging + eval callbacks and error handling
     try:
-        print("Starting training with debugging enabled...")
-        model.learn(total_timesteps=steps, callback=DebugCallback())
+        print(
+            f"Starting training with debugging enabled... (tensorboard: "
+            f"uv run tensorboard --logdir {tb_log_dir})"
+        )
+        model.learn(
+            total_timesteps=steps,
+            callback=callbacks,
+            tb_log_name=run_name,
+        )
     except ValueError as e:
         print("\n=== ERROR OCCURRED DURING TRAINING ===")
         print(f"Error: {e}")
@@ -433,23 +527,48 @@ def eval_action_mask(
 
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Train a MaskablePPO self-play model on Santorini."
+    )
+    parser.add_argument("--steps", type=int, default=3_000_000,
+                        help="Total training timesteps (default: 3M).")
+    parser.add_argument("--seed", type=int, default=0,
+                        help="Random seed for training (default: 0).")
+    parser.add_argument("--eval-freq", type=int, default=50_000,
+                        help="Steps between in-training win-rate evals (default: 50k).")
+    parser.add_argument("--n-eval-games", type=int, default=30,
+                        help="Games per in-training eval (default: 30).")
+    parser.add_argument("--final-eval-games", type=int, default=500,
+                        help="Games for the final vs-random eval (default: 500).")
+    parser.add_argument("--watch-games", type=int, default=0,
+                        help="Games to render after training (default: 0 — headless).")
+    args = parser.parse_args()
+
     env_fn = santorini_env
     env_kwargs = {}
     model_dir = Path.cwd() / "models"
     model_dir.mkdir(exist_ok=True)
 
-    # Train a model against itself
-    num_steps = 1_000_000
-
-    train_action_mask(env_fn, model_dir, steps=num_steps, seed=0, **env_kwargs)
-
-    # Evaluate 1000 games against a random agent
-    eval_action_mask(env_fn, model_dir, num_games=500, render_mode=None, **env_kwargs)
-
-    # Watch two games vs a random agent
-    eval_action_mask(
-        env_fn, model_dir, num_games=2, render_mode="rgb_array", **env_kwargs
+    train_action_mask(
+        env_fn,
+        model_dir,
+        steps=args.steps,
+        seed=args.seed,
+        eval_freq=args.eval_freq,
+        n_eval_games=args.n_eval_games,
+        **env_kwargs,
     )
+
+    eval_action_mask(
+        env_fn, model_dir, num_games=args.final_eval_games, render_mode=None, **env_kwargs
+    )
+
+    if args.watch_games > 0:
+        eval_action_mask(
+            env_fn, model_dir, num_games=args.watch_games, render_mode="rgb_array", **env_kwargs
+        )
 
 
 if __name__ == "__main__":

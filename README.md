@@ -46,6 +46,20 @@ To play in the browser, visit https://www.kennethallenmath.com/santorini/.
 
 Note: This is an old version of the game and currently does not support playing against an AI.
 
+## 🏋️ Training
+
+Train a self-play MaskablePPO model (see `uv run train --help` for flags):
+
+```
+uv run train
+```
+
+Watch metrics live in another terminal — the key convergence signal is `eval/winrate_vs_random`:
+
+```
+uv run tensorboard --logdir models/tb
+```
+
 ## 🤖 PettingZoo Environment
 
 The Santorini Env is set up for multi-agent reinforcement learning via custom PettingZoo environment and Stable Baseline 3.
