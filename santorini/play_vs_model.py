@@ -1,80 +1,55 @@
+"""Play against a trained model in the GUI."""
+
 from pathlib import Path
-import supersuit as ss
+
+import numpy as np
+import torch
 from sb3_contrib import MaskablePPO
-from sb3_contrib.common.wrappers import ActionMasker
 
-from santorini.env import santorini_env
+from santorini.game import Game
 from santorini.renderer import PygameRenderer
+from santorini.selfplay_env import NUM_ACTIONS, NUM_PLAYERS
 
-# Import both the wrappers and the custom stable policy classes
-from santorini.train import (
-    SB3ActionMaskWrapper,
-    mask_fn,
-)
+# Float32 rounding over 1600 actions can trip torch's Simplex() validation
+# on healthy logits (see train.py); disable it for inference too.
+torch.distributions.Distribution.set_default_validate_args(False)
 
 
 def play(model_path: Path, human_player: int = 0):
-    # 1) Create the raw PettingZoo env
-    pet_env = santorini_env()
+    model = MaskablePPO.load(str(model_path), device="cpu")
+    print("Model loaded successfully!")
 
-    # 2) Wrap for SB3's invalid‐action masking
-    sb3_env = SB3ActionMaskWrapper(pet_env)
-    sb3_env.reset()
-    mask_env = ActionMasker(sb3_env, mask_fn)
+    game = Game()
+    game.step(NUM_PLAYERS)  # select 2-player mode
 
-    # 3) Turn it into a single‐env VecEnv
-    vec_env = ss.stable_baselines3_vec_env_v0(
-        mask_env, num_envs=1, multiprocessing=False
-    )
-
-    # 4) Load your trained MaskablePPO
-    # Try to load the model - if it's an old model without stable policy, warn the user
-    try:
-        model = MaskablePPO.load(str(model_path), env=vec_env)
-        print("Model loaded successfully!")
-    except Exception as e:
-        print(f"\n⚠️  Error loading model: {e}")
-        print("\nThis might be an old model that was trained with a different policy.")
-        print("Please retrain with: python santorini/train.py")
-        print("Or delete old models with: rm models/santorini_v1_*.zip")
-        raise
-
-    # 5) Set up Pygame renderer and reset
     renderer = PygameRenderer()
-    mask_env.reset()
-    vec_obs = vec_env.reset()
 
-    # 6) Main loop: human goes when current_player_idx == human_player
-    done = False
-    while not done:
-        # Draw the current Game state
-        game = sb3_env.env.game
+    while not game.is_done():
         renderer.tick(game)
 
         if game.current_player_idx == human_player:
-            # block until the human clicks a full (move+build) action
+            # Block until the human clicks a full (move+build) action.
             action = renderer.get_human_action(game)
         else:
-            # let SB3 pick for us (pass the mask in)
-            current_mask = mask_env.action_masks()  # from SB3ActionMaskWrapper
-            vec_action, _ = model.predict(
-                vec_obs, action_masks=[current_mask], deterministic=True
+            obs = game.board.get_observation(game.current_player_idx)
+            mask = np.zeros(NUM_ACTIONS, dtype=np.int8)
+            mask[list(game.valid_actions)] = 1
+            action = int(
+                model.predict(obs, action_masks=mask, deterministic=True)[0]
             )
-            action = int(vec_action[0])
 
-        # 7) Step both the mask-wrapper and the VecEnv so they're in sync
-        _, _, termination, truncation, _ = mask_env.step(action)
-        done = termination or truncation
-        vec_obs, _, _, _ = vec_env.step([action])
+        game.step(action)
 
-    print("Game over!")
+    renderer.tick(game)
+    print(f"Game over! Winner is {game.winner}")
 
 
 def main():
-    models = sorted(Path(".").glob("models/santorini_*.zip"))
-    if not models:
-        raise RuntimeError("No saved model found in ./models/")
-    latest = models[-1]
+    models = Path(".").glob("models/santorini_*.zip")
+    try:
+        latest = max(models, key=lambda p: p.stat().st_mtime)
+    except ValueError:
+        raise RuntimeError("No saved model found in ./models/") from None
     print(f"Loading {latest}")
     play(latest)
 

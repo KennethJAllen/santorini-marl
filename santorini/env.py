@@ -34,11 +34,20 @@ class SantoriniEnv(AECEnv):
         "render_fps": 2,
     }
 
-    def __init__(self, num_players: int = 2, render_mode: str = None):
+    def __init__(
+        self,
+        num_players: int = 2,
+        render_mode: str = None,
+        reward_shaping: bool = False,
+    ):
         super().__init__()
         # Initialize internal Game
         self.game = Game()
         self.num_players = num_players
+        # Dense strategic/setup shaping rewards. Off by default: they are not
+        # potential-based, so they change the optimal policy, and their
+        # cumulative magnitude rivals the +/-1 terminal reward.
+        self.reward_shaping = reward_shaping
 
         self.agents = [f"player_{i}" for i in range(num_players)]
         self.possible_agents = self.agents[:]
@@ -136,6 +145,8 @@ class SantoriniEnv(AECEnv):
             # Set rewards for winning
             result_val = 1 if self.game.winner == self.game.players[0] else -1
             self.set_game_result(result_val)
+        elif not self.reward_shaping:
+            pass
         elif self.game.state == GameState.PLAYING:
             # Strategic reward during gameplay
             player_idx = self.agent_to_idx[self.agent_selection]

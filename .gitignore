@@ -1,6 +1,12 @@
 # Aseprite
 *.aseprite
 
+# Training artifacts (large, regenerable; keep only canonical committed models)
+models/pool/
+models/tb/
+models/santorini_selfplay_*.zip
+models/santorini_v1_2026*.zip
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

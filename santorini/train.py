@@ -1,576 +1,432 @@
+"""Frozen-opponent self-play training for Santorini with MaskablePPO.
+
+The learner is a normal single-agent Gym env (`SantoriniSelfPlayEnv`); the
+opponent's moves happen inside `env.step()` using a frozen policy sampled from
+a snapshot pool that is refreshed with copies of the learner as training
+progresses. This replaces the shared-stream PettingZoo/SB3 wrapper approach,
+which dropped the losing player's terminal reward and collapsed self-play
+into a single cooperative trajectory.
 """
-Based on https://pettingzoo.farama.org/tutorials/sb3/connect_four/
 
-Uses Stable-Baselines3 to train agents in the Santorini environment using invalid action masking.
-
-For information about invalid action masking in PettingZoo, see https://pettingzoo.farama.org/api/aec/#action-masking
-For more information about invalid action masking in SB3, see https://sb3-contrib.readthedocs.io/en/master/modules/ppo_mask.html
-
-Original author: Elliot (https://github.com/elliottower)
-"""
-
+from collections import deque
 from pathlib import Path
 import time
-from typing import Optional
 
-import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn
 from sb3_contrib import MaskablePPO
-from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
-from sb3_contrib.common.maskable.distributions import MaskableCategoricalDistribution
-from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+from stable_baselines3.common.vec_env import DummyVecEnv
 
-import pettingzoo.utils
+from santorini.opponents import (
+    GreedyOpponent,
+    Opponent,
+    OpponentPool,
+    RandomOpponent,
+)
+from santorini.selfplay_env import SantoriniSelfPlayEnv
 
-from santorini.env import santorini_env
+# Over 1600 actions, float32 softmax row-sums drift past the 1e-6 tolerance
+# torch's Simplex() validation demands (~16 rows per million), which crashes
+# MaskableCategorical.apply_masking on perfectly healthy logits. Real NaN/inf
+# problems are caught loudly by NanGuardCallback instead.
+torch.distributions.Distribution.set_default_validate_args(False)
 
 
-class StableMaskableCategoricalDistribution(MaskableCategoricalDistribution):
-    """
-    Numerically stable version of MaskableCategoricalDistribution.
-    Applies logit clipping and temperature scaling to prevent numerical underflow.
-    """
+class BoardCNN(BaseFeaturesExtractor):
+    """Small conv net over the (5, 5, 11) board observation (HWC layout)."""
 
-    def __init__(
-        self, action_dim: int, temperature: float = 1.0, logit_clip: float = 10.0
-    ):
-        super().__init__(action_dim)
-        self.temperature = temperature
-        self.logit_clip = logit_clip
-
-    def proba_distribution_net(self, latent_dim: int) -> nn.Module:
-        """Create the layer that represents the distribution."""
-        action_logits = nn.Linear(latent_dim, self.action_dim)
-        return action_logits
-
-    def proba_distribution(
-        self, action_logits: torch.Tensor, action_masks: Optional[torch.Tensor] = None
-    ) -> "StableMaskableCategoricalDistribution":
-        """
-        Create the distribution given its parameters (action_logits) with numerical stability improvements.
-        """
-        # Apply logit clipping to prevent extreme values
-        action_logits = torch.clamp(action_logits, -self.logit_clip, self.logit_clip)
-
-        # Apply temperature scaling (higher temperature = more exploration)
-        action_logits = action_logits / self.temperature
-
-        # Apply action mask by setting invalid actions to very negative values
-        if action_masks is not None:
-            # Convert to torch tensor if needed
-            if isinstance(action_masks, (list, np.ndarray)):
-                action_masks = torch.tensor(
-                    action_masks, dtype=torch.bool, device=action_logits.device
-                )
-            elif not isinstance(action_masks, torch.Tensor):
-                action_masks = torch.tensor(
-                    action_masks, dtype=torch.bool, device=action_logits.device
-                )
-            elif action_masks.dtype != torch.bool:
-                action_masks = action_masks.bool()
-
-            # Set masked (invalid) actions to a large negative value
-            # Using -1e8 instead of -inf for better numerical stability
-            action_logits = torch.where(
-                action_masks,
-                action_logits,
-                torch.tensor(
-                    -1e8, dtype=action_logits.dtype, device=action_logits.device
-                ),
-            )
-
-        self.distribution = torch.distributions.Categorical(logits=action_logits)
-        return self
-
-    def apply_masking(self, action_masks: torch.Tensor) -> None:
-        """
-        Apply masking to the distribution (alternative interface for compatibility).
-        """
-        # Get current logits
-        action_logits = self.distribution.logits
-
-        # Convert to torch tensor if needed
-        if isinstance(action_masks, (list, np.ndarray)):
-            action_masks = torch.tensor(
-                action_masks, dtype=torch.bool, device=action_logits.device
-            )
-        elif not isinstance(action_masks, torch.Tensor):
-            action_masks = torch.tensor(
-                action_masks, dtype=torch.bool, device=action_logits.device
-            )
-        elif action_masks.dtype != torch.bool:
-            action_masks = action_masks.bool()
-
-        # Apply mask
-        action_logits = torch.where(
-            action_masks,
-            action_logits,
-            torch.tensor(-1e8, dtype=action_logits.dtype, device=action_logits.device),
+    def __init__(self, observation_space, features_dim: int = 256):
+        super().__init__(observation_space, features_dim)
+        n_channels = observation_space.shape[2]
+        self.cnn = nn.Sequential(
+            nn.Conv2d(n_channels, 64, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Flatten(),
         )
+        with torch.no_grad():
+            sample = torch.as_tensor(observation_space.sample()[None]).float()
+            n_flatten = self.cnn(sample.permute(0, 3, 1, 2)).shape[1]
+        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
 
-        # Recreate distribution with masked logits
-        self.distribution = torch.distributions.Categorical(logits=action_logits)
-
-
-class StableMaskableActorCriticPolicy(MaskableActorCriticPolicy):
-    """
-    Custom policy that uses the stable maskable categorical distribution.
-    """
-
-    def __init__(
-        self, *args, temperature: float = 1.5, logit_clip: float = 10.0, **kwargs
-    ):
-        self.temperature = temperature
-        self.logit_clip = logit_clip
-        super().__init__(*args, **kwargs)
-
-    def _build(self, lr_schedule) -> None:
-        """
-        Create the networks and the optimizer.
-        Override to use our stable distribution.
-        """
-        super()._build(lr_schedule)
-
-        # Replace the action distribution with our stable version
-        self.action_dist = StableMaskableCategoricalDistribution(
-            self.action_space.n,
-            temperature=self.temperature,
-            logit_clip=self.logit_clip,
-        )
+    def forward(self, observations: torch.Tensor) -> torch.Tensor:
+        return self.linear(self.cnn(observations.permute(0, 3, 1, 2)))
 
 
-class DebugCallback(BaseCallback):
-    """Callback to debug action masking during training."""
+POLICY_KWARGS = dict(
+    features_extractor_class=BoardCNN,
+    features_extractor_kwargs=dict(features_dim=256),
+    net_arch=dict(pi=[256], vf=[256]),
+)
 
-    def __init__(self, verbose=0):
-        super().__init__(verbose)
-        self.step_count = 0
-        self.last_entropy_loss = None
 
-    def _on_step(self):
-        self.step_count += 1
-        # Access the current observation and action mask
-        if hasattr(self.training_env, "get_attr"):
-            try:
-                masks = self.training_env.env_method("action_mask")
-                # obs = self.locals.get("obs_tensor", None)
+class NanGuardCallback(BaseCallback):
+    """Fail fast with a clear message if the policy weights ever go
+    non-finite. This replaces the safety torch's distribution validation
+    used to provide (now disabled — it false-alarmed on float32 rounding)."""
 
-                if masks:
-                    mask = masks[0]
-                    num_valid = np.sum(mask)
+    def _on_rollout_end(self) -> None:
+        for name, param in self.model.policy.named_parameters():
+            if not torch.isfinite(param).all():
+                raise RuntimeError(
+                    f"Non-finite values in policy parameter '{name}' at "
+                    f"{self.num_timesteps:,} steps - the policy has diverged. "
+                    "Lower --lr or --target-kl and restart from a snapshot."
+                )
 
-                    # Print every 1000 steps or when there are very few valid actions
-                    if self.step_count % 1000 == 0:
-                        status_msg = f"Step {self.step_count}: Valid actions: {num_valid}/{len(mask)}"
-                        if self.last_entropy_loss is not None:
-                            status_msg += (
-                                f", Entropy loss: {self.last_entropy_loss:.3f}"
-                            )
-                        print(status_msg)
-
-            except Exception as e:
-                if self.step_count % 1000 == 0:
-                    print(f"Step {self.step_count}: Could not access mask - {e}")
-
+    def _on_step(self) -> bool:
         return True
 
-    def _on_rollout_end(self):
-        """Called at the end of each rollout to track entropy."""
-        # Try to get the entropy loss from the logger
-        if hasattr(self.model, "logger") and self.model.logger is not None:
-            try:
-                # Get the last recorded entropy loss
-                if "train/entropy_loss" in self.model.logger.name_to_value:
-                    self.last_entropy_loss = self.model.logger.name_to_value[
-                        "train/entropy_loss"
-                    ]
 
-                    # Warn if entropy is getting too negative (policy too deterministic)
-                    # For sparse action spaces (8-50 valid actions out of 1600), entropy around -2 to -4 is expected
-                    if self.last_entropy_loss < -4.5:
-                        print(
-                            f"  ⚠️  WARNING: Entropy loss is very negative ({self.last_entropy_loss:.3f}) - policy may be too deterministic!"
-                        )
-                    elif self.step_count % 5000 == 0:
-                        print(f"  Entropy loss: {self.last_entropy_loss:.3f}")
-            except Exception:
-                pass
-
-
-# To pass into other gymnasium wrappers, we need to ensure that pettingzoo's wrappper
-# can also be a gymnasium Env. Thus, we subclass under gym.Env as well.
-class SB3ActionMaskWrapper(pettingzoo.utils.BaseWrapper, gym.Env):
-    """Wrapper to allow PettingZoo environments to be used with SB3 illegal action masking."""
-
-    def reset(self, seed=None, options=None):
-        """Gymnasium-like reset function which assigns obs/action spaces to be the same for each agent.
-
-        This is required as SB3 is designed for single-agent RL and doesn't expect obs/action spaces to be functions
-        """
-        super().reset(seed, options)
-
-        # Strip the action mask out from the observation space
-        self.observation_space = super().observation_space(self.possible_agents[0])[
-            "observation"
-        ]
-        self.action_space = super().action_space(self.possible_agents[0])
-
-        # Return initial observation, info (PettingZoo AEC envs do not by default)
-        return self.observe(self.agent_selection), {}
-
-    def step(self, action):
-        """
-        Gymnasium-like step function, returning observation, reward, termination, truncation, info.
-        The observation is for the next agent (used to determine the next action), while the remaining
-        items are for the agent that just acted (used to understand what just happened).
-        """
-        current_agent = self.agent_selection
-
-        super().step(action)
-
-        next_agent = self.agent_selection
-        return (
-            self.observe(next_agent),
-            self._cumulative_rewards[current_agent],
-            self.terminations[current_agent],
-            self.truncations[current_agent],
-            self.infos[current_agent],
-        )
-
-    def observe(self, agent):
-        """Return only raw observation, removing action mask."""
-        return super().observe(agent)["observation"]
-
-    def action_mask(self):
-        """Separate function used in order to access the action mask."""
-        return super().observe(self.agent_selection)["action_mask"]
-
-
-def mask_fn(env):
-    mask = env.action_mask()
-    assert any(mask), f"No valid actions! Agent: {env.unwrapped.agent_selection}"
-
-    return mask
-
-
-class WinrateEvalCallback(BaseCallback):
-    """Plays N games vs a random opponent every `eval_freq` env steps and logs
-    `eval/winrate_vs_random` and `eval/mean_ep_length` to the SB3 logger
-    (i.e. stdout + TensorBoard when enabled). Model plays as player_1 to match
-    the convention in `eval_action_mask`."""
+class SnapshotCallback(BaseCallback):
+    """Periodically freeze a copy of the learner into the opponent pool."""
 
     def __init__(
         self,
-        env_fn,
-        env_kwargs=None,
-        eval_freq: int = 50_000,
-        n_games: int = 30,
+        pool: OpponentPool,
+        pool_dir: Path,
+        snapshot_freq: int = 100_000,
         verbose: int = 0,
     ):
         super().__init__(verbose)
-        self.env_fn = env_fn
-        self.env_kwargs = env_kwargs or {}
-        self.eval_freq = eval_freq
-        self.n_games = n_games
+        self.pool = pool
+        self.pool_dir = pool_dir
+        self.snapshot_freq = snapshot_freq
+        self._last_snapshot = 0
 
     def _on_step(self) -> bool:
-        if self.n_calls % self.eval_freq == 0:
-            winrate, avg_len = self._evaluate()
-            self.logger.record("eval/winrate_vs_random", winrate)
-            self.logger.record("eval/mean_ep_length", avg_len)
+        if self.num_timesteps - self._last_snapshot >= self.snapshot_freq:
+            self._last_snapshot = self.num_timesteps
+            path = self.pool_dir / f"snapshot_{self.num_timesteps:010d}"
+            self.model.save(path)
+            self.pool.add_snapshot(path.with_suffix(".zip"))
             if self.verbose:
-                print(
-                    f"[eval @ step {self.num_timesteps}] "
-                    f"winrate_vs_random={winrate:.2%} mean_ep_len={avg_len:.1f}"
-                )
+                print(f"[pool] froze snapshot at {self.num_timesteps:,} steps")
         return True
 
-    def _evaluate(self) -> tuple[float, float]:
-        env = self.env_fn(**self.env_kwargs)
-        wins = 0
-        decisive = 0
-        total_len = 0
-        for seed in range(self.n_games):
-            env.reset(seed=seed)
-            ep_len = 0
-            for agent in env.agent_iter():
-                obs, _reward, term, trunc, _info = env.last()
-                if term or trunc:
-                    r0 = env.rewards[env.possible_agents[0]]
-                    r1 = env.rewards[env.possible_agents[1]]
-                    if r0 != r1:
-                        decisive += 1
-                        if r1 > r0:
-                            wins += 1
-                    break
-                observation, action_mask = obs["observation"], obs["action_mask"]
-                if agent == env.possible_agents[0]:
-                    act = env.action_space(agent).sample(action_mask)
-                else:
-                    act = int(
-                        self.model.predict(
-                            observation,
-                            action_masks=action_mask,
-                            deterministic=True,
-                        )[0]
+
+class SelfplayStatsCallback(BaseCallback):
+    """Logs learner-perspective self-play stats from episode-end infos:
+    win rate (overall and per seat), episode length, and the terminal vs
+    shaping reward split. A healthy run has learner_winrate near 0.5 once the
+    pool holds recent snapshots; ~1.0 or ~0.0 per seat is a red flag."""
+
+    def __init__(self, window: int = 200, verbose: int = 0):
+        super().__init__(verbose)
+        self._episodes = deque(maxlen=window)
+
+    def _on_step(self) -> bool:
+        for info in self.locals["infos"]:
+            if "learner_won" in info:
+                self._episodes.append(info)
+        return True
+
+    def _on_rollout_end(self) -> None:
+        if not self._episodes:
+            return
+        eps = list(self._episodes)
+        won = np.array([e["learner_won"] for e in eps], dtype=float)
+        seats = np.array([e["learner_seat"] for e in eps])
+        self.logger.record("selfplay/learner_winrate", float(won.mean()))
+        for seat in (0, 1):
+            if (seats == seat).any():
+                self.logger.record(
+                    f"selfplay/learner_winrate_seat{seat}",
+                    float(won[seats == seat].mean()),
+                )
+        self.logger.record(
+            "selfplay/ep_len_mean",
+            float(np.mean([e["learner_ep_len"] for e in eps])),
+        )
+        self.logger.record(
+            "selfplay/terminal_reward_mean",
+            float(np.mean([e["terminal_reward"] for e in eps])),
+        )
+        self.logger.record(
+            "selfplay/shaping_total_mean",
+            float(np.mean([e["shaping_total"] for e in eps])),
+        )
+
+
+def play_eval_games(
+    model,
+    opponent_factory,
+    learner_seat: int,
+    n_games: int,
+    seed: int = 0,
+    deterministic: bool = True,
+) -> tuple[float, list[int], list[tuple]]:
+    """Play `n_games` with the model in `learner_seat` vs a fresh opponent per
+    game. Returns (winrate, episode lengths, learner action trajectories)."""
+    wins = 0
+    lengths: list[int] = []
+    trajectories: list[tuple] = []
+    for i in range(n_games):
+        opponent: Opponent = opponent_factory(np.random.default_rng(seed + i))
+        env = SantoriniSelfPlayEnv(opponent=opponent, learner_seat=learner_seat)
+        obs, _ = env.reset(seed=seed + i)
+        actions = []
+        terminated = False
+        info = {}
+        while not terminated:
+            mask = env.action_masks()
+            action = int(
+                model.predict(obs, action_masks=mask, deterministic=deterministic)[0]
+            )
+            actions.append(action)
+            obs, _reward, terminated, _truncated, info = env.step(action)
+        wins += bool(info["learner_won"])
+        lengths.append(info["learner_ep_len"])
+        trajectories.append(tuple(actions))
+    return wins / n_games, lengths, trajectories
+
+
+class MetricsEvalCallback(BaseCallback):
+    """Every `eval_freq` steps, evaluates the learner from both seats against
+    random, greedy-heuristic, and latest-snapshot opponents, and logs
+    trajectory diversity — the direct detector for the deterministic
+    self-play collapse this rewrite fixes."""
+
+    def __init__(
+        self,
+        pool: OpponentPool,
+        eval_freq: int = 25_000,
+        n_games: int = 20,
+        verbose: int = 0,
+    ):
+        super().__init__(verbose)
+        self.pool = pool
+        self.eval_freq = eval_freq
+        self.n_games = n_games
+        self._last_eval = 0
+
+    def _on_step(self) -> bool:
+        if self.num_timesteps - self._last_eval >= self.eval_freq:
+            self._last_eval = self.num_timesteps
+            self._run_eval()
+        return True
+
+    def _run_eval(self) -> None:
+        seed = self.num_timesteps
+        all_lengths: list[int] = []
+        random_trajectories: list[tuple] = []
+        opponent_factories = {
+            "random": RandomOpponent,
+            "greedy": GreedyOpponent,
+        }
+        for name, factory in opponent_factories.items():
+            for seat in (0, 1):
+                winrate, lengths, trajs = play_eval_games(
+                    self.model, factory, seat, self.n_games, seed=seed
+                )
+                self.logger.record(f"eval/winrate_vs_{name}_p{seat}", winrate)
+                all_lengths.extend(lengths)
+                if name == "random":
+                    random_trajectories.extend(trajs)
+                if self.verbose:
+                    print(
+                        f"[eval @ {self.num_timesteps:,}] vs {name} as p{seat}: "
+                        f"{winrate:.0%}"
                     )
-                env.step(act)
-                ep_len += 1
-            total_len += ep_len
-        env.close()
-        winrate = wins / decisive if decisive else 0.0
-        avg_len = total_len / self.n_games
-        return winrate, avg_len
+
+        latest = self.pool.latest
+        if latest is not None:
+            wr0, lengths0, _ = play_eval_games(
+                self.model, lambda rng: latest, 0, self.n_games, seed=seed
+            )
+            wr1, lengths1, _ = play_eval_games(
+                self.model, lambda rng: latest, 1, self.n_games, seed=seed
+            )
+            self.logger.record(
+                "eval/winrate_vs_latest_snapshot", (wr0 + wr1) / 2
+            )
+            all_lengths.extend(lengths0 + lengths1)
+
+        # Fraction of distinct learner trajectories across vs-random games.
+        # Near 1.0 is healthy; near 0 means the policy funnels every game
+        # into the same line of play.
+        diversity = len(set(random_trajectories)) / len(random_trajectories)
+        self.logger.record("eval/traj_diversity", diversity)
+        self.logger.record("eval/ep_len_mean", float(np.mean(all_lengths)))
+        self.logger.record("eval/ep_len_std", float(np.std(all_lengths)))
 
 
-def train_action_mask(
-    env_fn,
+def make_env(pool: OpponentPool, shaping_scale: float, gamma: float):
+    def _init():
+        env = SantoriniSelfPlayEnv(
+            opponent_pool=pool, shaping_scale=shaping_scale, gamma=gamma
+        )
+        return Monitor(env)
+
+    return _init
+
+
+def train_selfplay(
     model_dir: Path,
-    steps=10_000,
-    seed=0,
-    temperature=1.0,
-    logit_clip=50.0,
-    eval_freq: int = 50_000,
-    n_eval_games: int = 30,
-    **env_kwargs,
-):
-    """
-    Train a single model to play as each agent in a zero-sum game environment using invalid action masking.
+    steps: int = 3_000_000,
+    seed: int = 0,
+    n_envs: int = 8,
+    eval_freq: int = 25_000,
+    n_eval_games: int = 20,
+    snapshot_freq: int = 100_000,
+    shaping_scale: float = 0.0,
+    gamma: float = 0.99,
+    learning_rate: float = 1e-4,
+    target_kl: float = 0.03,
+    resume: Path | None = None,
+) -> Path:
+    """Train MaskablePPO against a pool of frozen snapshots of itself."""
+    pool = OpponentPool(rng=np.random.default_rng(seed))
+    pool_dir = model_dir / "pool"
+    pool_dir.mkdir(parents=True, exist_ok=True)
 
-    Args:
-        temperature: Temperature for softmax (higher = more exploration, default 1.5)
-        logit_clip: Clip logits to [-logit_clip, logit_clip] for numerical stability (default 10.0)
-    """
-    env = env_fn(**env_kwargs)
-
-    print(f"Starting training on {str(env.metadata['name'])}.")
-    print(
-        f"Using temperature={temperature}, logit_clip={logit_clip} for numerical stability"
-    )
-
-    # Custom wrapper to convert PettingZoo envs to work with SB3 action masking
-    env = SB3ActionMaskWrapper(env)
-
-    env.reset(seed=seed)  # Must call reset() in order to re-define the spaces
-
-    env = ActionMasker(env, mask_fn)  # Wrap to enable masking (SB3 function)
-
-    # Create policy kwargs with temperature and logit clipping
-    policy_kwargs = {
-        "temperature": temperature,
-        "logit_clip": logit_clip,
-    }
+    vec_env = DummyVecEnv([make_env(pool, shaping_scale, gamma)] * n_envs)
 
     tb_log_dir = model_dir / "tb"
-    run_name = f"santorini_{time.strftime('%Y%m%d-%H%M%S')}"
+    run_name = f"selfplay_{time.strftime('%Y%m%d-%H%M%S')}"
 
-    # MaskablePPO with our numerically stable policy
-    model = MaskablePPO(
-        StableMaskableActorCriticPolicy,
-        env,
-        policy_kwargs=policy_kwargs,
-        learning_rate=1e-4,  # Reduced from 3e-4 for more stable training
-        n_steps=2048,  # Collect more steps before updating (helps with sparse rewards)
-        batch_size=512,  # Larger batch size for stability
-        n_epochs=10,  # Number of optimization epochs per update
-        gamma=0.99,  # Discount factor (important for long games)
-        gae_lambda=0.95,  # Generalized Advantage Estimation parameter
-        clip_range=0.2,  # PPO clipping parameter
-        ent_coef=0.01,  # SB3 default; shaped rewards and masking already bias exploration enough
-        vf_coef=0.5,  # Value function coefficient
-        max_grad_norm=0.5,  # Gradient clipping
-        tensorboard_log=str(tb_log_dir),
-        verbose=1,
-    )
-    model.set_random_seed(seed)
+    if resume is not None:
+        model = MaskablePPO.load(
+            resume,
+            env=vec_env,
+            device="cpu",
+            tensorboard_log=str(tb_log_dir),
+            custom_objects={"learning_rate": learning_rate, "target_kl": target_kl},
+        )
+        # Re-seed the pool with the snapshots already on disk so the learner
+        # does not restart against a purely random opponent.
+        for snap in sorted(pool_dir.glob("snapshot_*.zip"))[-pool.max_snapshots:]:
+            pool.add_snapshot(snap)
+        print(
+            f"Resumed from {resume} at {model.num_timesteps:,} steps "
+            f"({len(pool._snapshots)} pool snapshots re-registered)"
+        )
+    else:
+        model = MaskablePPO(
+            "MlpPolicy",
+            vec_env,
+            policy_kwargs=POLICY_KWARGS,
+            learning_rate=learning_rate,
+            n_steps=256,  # per env; 8 envs -> 2048-step rollout buffer
+            batch_size=512,
+            n_epochs=4,
+            gamma=gamma,
+            gae_lambda=0.95,
+            clip_range=0.2,
+            ent_coef=0.01,
+            vf_coef=0.5,
+            max_grad_norm=0.5,
+            # Abort an update once the policy drifts this far from the
+            # rollout policy; caps how hard any single update can push.
+            target_kl=target_kl,
+            tensorboard_log=str(tb_log_dir),
+            seed=seed,
+            verbose=1,
+        )
 
     callbacks = [
-        DebugCallback(),
-        WinrateEvalCallback(
-            env_fn,
-            env_kwargs=env_kwargs,
-            eval_freq=eval_freq,
-            n_games=n_eval_games,
-            verbose=1,
-        ),
+        NanGuardCallback(),
+        SnapshotCallback(pool, pool_dir, snapshot_freq=snapshot_freq, verbose=1),
+        SelfplayStatsCallback(),
+        MetricsEvalCallback(pool, eval_freq=eval_freq, n_games=n_eval_games, verbose=1),
     ]
 
-    # Train with debugging + eval callbacks and error handling
-    try:
-        print(
-            f"Starting training with debugging enabled... (tensorboard: "
-            f"uv run tensorboard --logdir {tb_log_dir})"
-        )
-        model.learn(
-            total_timesteps=steps,
-            callback=callbacks,
-            tb_log_name=run_name,
-        )
-    except ValueError as e:
-        print("\n=== ERROR OCCURRED DURING TRAINING ===")
-        print(f"Error: {e}")
-        print("\nCurrent environment state:")
-        try:
-            print(f"  Agent: {env.unwrapped.agent_selection}")
-            current_mask = env.action_mask()
-            print(f"  Action mask: {current_mask}")
-            print(f"  Num valid actions: {np.sum(current_mask)}")
-            print(f"  Valid action indices: {np.where(current_mask)[0]}")
-
-            # Try to get the current observation
-            obs = env.observe(env.unwrapped.agent_selection)
-            print(f"  Observation shape: {obs.shape}")
-            print(
-                f"  Observation stats: min={obs.min()}, max={obs.max()}, mean={obs.mean()}"
-            )
-        except Exception as inner_e:
-            print(f"  Could not retrieve environment state: {inner_e}")
-
-        print("=" * 40)
-        raise
-
-    save_path = (
-        model_dir / f"{env.unwrapped.metadata['name']}_{time.strftime('%Y%m%d-%H%M%S')}"
+    print(
+        f"Training for {steps:,} steps on {n_envs} envs "
+        f"(tensorboard: uv run tensorboard --logdir {tb_log_dir})"
     )
+    model.learn(
+        total_timesteps=steps,
+        callback=callbacks,
+        tb_log_name=run_name,
+        reset_num_timesteps=resume is None,
+    )
+
+    save_path = model_dir / f"santorini_selfplay_{time.strftime('%Y%m%d-%H%M%S')}"
     model.save(save_path)
+    save_path = save_path.with_suffix(".zip")
+    print(f"Model saved to {save_path}")
 
-    print(f"Model has been saved to {save_path}")
-
-    print(f"Finished training on {str(env.unwrapped.metadata['name'])}.\n")
-
-    env.close()
+    vec_env.close()
     return save_path
 
 
-def eval_action_mask(
-    env_fn,
-    model_dir: Path,
-    num_games: int = 100,
-    render_mode: str = None,
-    model_path: Path | None = None,
-    **env_kwargs,
-):
-    # Evaluate a trained agent vs a random agent
-    env = env_fn(render_mode=render_mode, **env_kwargs)
-
-    print(
-        f"Starting evaluation vs a random agent. Trained agent will play as {env.possible_agents[1]}."
-    )
-
-    if model_path is None:
-        try:
-            env_name = env.metadata["name"]
-            model_path = max(
-                model_dir.glob(f"{env_name}*.zip"),
-                key=lambda p: p.stat().st_ctime,  # creation time
+def final_eval(model_path: Path, n_games: int = 100, seed: int = 10_000) -> None:
+    """Post-training report: winrates from both seats vs random and greedy,
+    plus trajectory diversity vs random."""
+    model = MaskablePPO.load(model_path, device="cpu")
+    print(f"\n=== Final evaluation: {model_path.name} ({n_games} games each) ===")
+    trajectories: list[tuple] = []
+    for name, factory in (("random", RandomOpponent), ("greedy", GreedyOpponent)):
+        for seat in (0, 1):
+            winrate, lengths, trajs = play_eval_games(
+                model, factory, seat, n_games, seed=seed
             )
-        except ValueError:
-            print("Policy not found.")
-            return
-
-    model = MaskablePPO.load(model_path)
-
-    p0, p1 = env.possible_agents
-    wins = losses = draws = 0
-
-    for i in range(num_games):
-        env.reset(seed=i)
-
-        for agent in env.agent_iter():
-            obs, reward, termination, truncation, info = env.last()
-
-            # Separate observation and action mask
-            observation, action_mask = obs.values()
-
-            if termination or truncation:
-                r0 = env.rewards[p0]
-                r1 = env.rewards[p1]
-                if r1 > r0:
-                    wins += 1
-                elif r0 > r1:
-                    losses += 1
-                else:
-                    draws += 1
-                break
-            else:
-                if agent == p0:
-                    act = env.action_space(agent).sample(action_mask)
-                else:
-                    # Note: PettingZoo expects integer actions
-                    act = int(
-                        model.predict(
-                            observation, action_masks=action_mask, deterministic=True
-                        )[0]
-                    )
-            env.step(act)
-            if render_mode == "rgb_array":
-                env.render()
-                time.sleep(0.5)
-    env.close()
-
-    decisive = wins + losses
-    winrate = wins / decisive if decisive else 0.0
-    print(f"Wins: {wins}, Losses: {losses}, Draws: {draws}")
-    print(f"Winrate (decisive games): {winrate:.2%}")
-    return wins, losses, draws, winrate
+            if name == "random":
+                trajectories.extend(trajs)
+            print(
+                f"vs {name:<7} as p{seat}: winrate {winrate:.1%}, "
+                f"mean len {np.mean(lengths):.1f}"
+            )
+    diversity = len(set(trajectories)) / len(trajectories)
+    print(f"trajectory diversity vs random: {diversity:.1%}")
 
 
 def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Train a MaskablePPO self-play model on Santorini."
+        description="Train a frozen-opponent self-play MaskablePPO model on Santorini."
     )
     parser.add_argument("--steps", type=int, default=3_000_000,
-                        help="Total training timesteps (default: 3M).")
+                        help="Training timesteps (default: 3M); counted on top "
+                             "of the checkpoint's steps when using --resume.")
     parser.add_argument("--seed", type=int, default=0,
-                        help="Random seed for training (default: 0).")
-    parser.add_argument("--eval-freq", type=int, default=50_000,
-                        help="Steps between in-training win-rate evals (default: 50k).")
-    parser.add_argument("--n-eval-games", type=int, default=30,
-                        help="Games per in-training eval (default: 30).")
-    parser.add_argument("--final-eval-games", type=int, default=500,
-                        help="Games for the final vs-random eval (default: 500).")
-    parser.add_argument("--watch-games", type=int, default=0,
-                        help="Games to render after training (default: 0 — headless).")
+                        help="Random seed (default: 0).")
+    parser.add_argument("--n-envs", type=int, default=8,
+                        help="Parallel envs for rollout collection (default: 8).")
+    parser.add_argument("--eval-freq", type=int, default=25_000,
+                        help="Steps between in-training evals (default: 25k).")
+    parser.add_argument("--n-eval-games", type=int, default=20,
+                        help="Games per opponent/seat per in-training eval (default: 20).")
+    parser.add_argument("--snapshot-freq", type=int, default=100_000,
+                        help="Steps between opponent-pool snapshots (default: 100k).")
+    parser.add_argument("--shaping-scale", type=float, default=0.0,
+                        help="Scale of potential-based height shaping (default: 0 = off).")
+    parser.add_argument("--lr", type=float, default=1e-4,
+                        help="Learning rate (default: 1e-4).")
+    parser.add_argument("--target-kl", type=float, default=0.03,
+                        help="Early-stop a PPO update past this approx KL (default: 0.03).")
+    parser.add_argument("--resume", type=Path, default=None,
+                        help="Resume training from a saved model/snapshot .zip "
+                             "(e.g. models/pool/snapshot_0000400000.zip).")
+    parser.add_argument("--final-eval-games", type=int, default=100,
+                        help="Games per opponent/seat in the final eval (default: 100).")
     args = parser.parse_args()
 
-    env_fn = santorini_env
-    env_kwargs = {}
     model_dir = Path.cwd() / "models"
     model_dir.mkdir(exist_ok=True)
 
-    save_path = train_action_mask(
-        env_fn,
+    save_path = train_selfplay(
         model_dir,
         steps=args.steps,
         seed=args.seed,
+        n_envs=args.n_envs,
         eval_freq=args.eval_freq,
         n_eval_games=args.n_eval_games,
-        **env_kwargs,
+        snapshot_freq=args.snapshot_freq,
+        shaping_scale=args.shaping_scale,
+        learning_rate=args.lr,
+        target_kl=args.target_kl,
+        resume=args.resume,
     )
 
-    eval_action_mask(
-        env_fn,
-        model_dir,
-        num_games=args.final_eval_games,
-        render_mode=None,
-        model_path=save_path,
-        **env_kwargs,
-    )
-
-    if args.watch_games > 0:
-        eval_action_mask(
-            env_fn,
-            model_dir,
-            num_games=args.watch_games,
-            render_mode="rgb_array",
-            model_path=save_path,
-            **env_kwargs,
-        )
+    final_eval(save_path, n_games=args.final_eval_games)
 
 
 if __name__ == "__main__":
