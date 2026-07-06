@@ -758,6 +758,7 @@ dependencies = [
     { name = "pytest" },
     { name = "sb3-contrib" },
     { name = "tensorboard" },
+    { name = "torch" },
 ]
 
 [package.dev-dependencies]
@@ -775,6 +776,7 @@ requires-dist = [
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "sb3-contrib", git = "https://github.com/Stable-Baselines-Team/stable-baselines3-contrib.git" },
     { name = "tensorboard", specifier = ">=2.20.0" },
+    { name = "torch", specifier = ">=2.0" },
 ]
 
 [package.metadata.requires-dev]
