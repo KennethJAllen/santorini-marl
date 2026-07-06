@@ -34,11 +34,20 @@ class SantoriniEnv(AECEnv):
         "render_fps": 2,
     }
 
-    def __init__(self, num_players: int = 2, render_mode: str = None):
+    def __init__(
+        self,
+        num_players: int = 2,
+        render_mode: str = None,
+        reward_shaping: bool = False,
+    ):
         super().__init__()
         # Initialize internal Game
         self.game = Game()
         self.num_players = num_players
+        # Dense strategic/setup shaping rewards. Off by default: they are not
+        # potential-based, so they change the optimal policy, and their
+        # cumulative magnitude rivals the +/-1 terminal reward.
+        self.reward_shaping = reward_shaping
 
         self.agents = [f"player_{i}" for i in range(num_players)]
         self.possible_agents = self.agents[:]
@@ -120,8 +129,13 @@ class SantoriniEnv(AECEnv):
         ):
             return self._was_dead_step(action)
 
-        # Reset rewards for current agent before calculating new reward
+        # Reset rewards for current agent before calculating new reward.
+        # Both the per-step `rewards` dict and the `_cumulative_rewards` dict
+        # must be cleared here: `_accumulate_rewards()` only adds into
+        # `_cumulative_rewards` and never resets it, and the SB3 wrapper
+        # reads `_cumulative_rewards[current_agent]` as the step reward.
         self.rewards[self.agent_selection] = 0
+        self._cumulative_rewards[self.agent_selection] = 0
 
         self.game.step(action)
 
@@ -131,6 +145,8 @@ class SantoriniEnv(AECEnv):
             # Set rewards for winning
             result_val = 1 if self.game.winner == self.game.players[0] else -1
             self.set_game_result(result_val)
+        elif not self.reward_shaping:
+            pass
         elif self.game.state == GameState.PLAYING:
             # Strategic reward during gameplay
             player_idx = self.agent_to_idx[self.agent_selection]
@@ -174,7 +190,7 @@ class SantoriniEnv(AECEnv):
             for w in opp.workers
             if w.position is not None
         )
-        max_height_reward = 0.3 * (player_max_height - opp_max_height)
+        max_height_reward = 0.03 * (player_max_height - opp_max_height)
 
         # Average height (general board control)
         player_avg_height = sum(
@@ -187,7 +203,7 @@ class SantoriniEnv(AECEnv):
             for w in opp.workers
             if w.position is not None
         ) / len(opp.workers)
-        avg_height_reward = 0.1 * (player_avg_height - opp_avg_height)
+        avg_height_reward = 0.01 * (player_avg_height - opp_avg_height)
 
         # Mobility (number of valid actions)
         player_valid_actions = set()
@@ -199,7 +215,7 @@ class SantoriniEnv(AECEnv):
             opp_valid_actions |= self.game.board.get_valid_worker_actions(worker)
 
         # Normalize by typical number of moves (~20-40)
-        mobility_reward = 0.01 * (len(player_valid_actions) - len(opp_valid_actions))
+        mobility_reward = 0.001 * (len(player_valid_actions) - len(opp_valid_actions))
 
         # Win threat bonus: can any worker reach height 3?
         player_can_win = False
@@ -230,8 +246,8 @@ class SantoriniEnv(AECEnv):
                     opp_can_win = True
                     break
 
-        win_threat_reward = 0.2 if player_can_win else 0.0
-        win_threat_reward -= 0.2 if opp_can_win else 0.0
+        win_threat_reward = 0.02 if player_can_win else 0.0
+        win_threat_reward -= 0.02 if opp_can_win else 0.0
 
         return (
             max_height_reward + avg_height_reward + mobility_reward + win_threat_reward
@@ -257,7 +273,7 @@ class SantoriniEnv(AECEnv):
         center = self.game.board.grid_size / 2
         distance_from_center = abs(x - center) + abs(y - center)
         max_distance = 2 * (center - 0.5)  # Maximum Manhattan distance from center
-        center_reward = 0.05 * (1 - distance_from_center / max_distance)
+        center_reward = 0.005 * (1 - distance_from_center / max_distance)
         reward += center_reward
 
         # Separation bonus: penalize workers too close together
@@ -266,9 +282,9 @@ class SantoriniEnv(AECEnv):
                 ox, oy = other_worker.position
                 distance = max(abs(x - ox), abs(y - oy))  # Chebyshev distance
                 if distance <= 1:
-                    reward -= 0.1  # Penalty for adjacent workers
+                    reward -= 0.01  # Penalty for adjacent workers
                 elif distance == 2:
-                    reward -= 0.05  # Small penalty for very close workers
+                    reward -= 0.005  # Small penalty for very close workers
 
         return reward
 
@@ -293,6 +309,8 @@ class SantoriniEnv(AECEnv):
             if self.render_mode == "human":
                 return self.renderer.get_human_action(self.game)
             else:
+                # "rgb_array" here paints the pygame window rather than
+                # returning an ndarray (used for visualization, not capture).
                 return None
         else:
             raise ValueError(

@@ -46,6 +46,35 @@ To play in the browser, visit https://www.kennethallenmath.com/santorini/.
 
 Note: This is an old version of the game and currently does not support playing against an AI.
 
+## 🏋️ Training
+
+Train a MaskablePPO model with frozen-opponent self-play (see `uv run train --help` for flags):
+
+```
+uv run train
+```
+
+The learner plays a single seat (randomized per episode) against a pool of frozen snapshots of itself (plus a random opponent for variety); the pool is refreshed every `--snapshot-freq` steps. Rewards are pure win/loss (+1/−1); optional potential-based height shaping is available via `--shaping-scale`.
+
+Watch metrics live in another terminal:
+
+```
+uv run tensorboard --logdir models/tb
+```
+
+Key signals:
+
+- `eval/winrate_vs_greedy_p0` / `_p1` — winrate against a 1-ply heuristic from each seat; the main convergence signal. Winrate vs random saturates early and cannot distinguish a strong policy from a degenerate one.
+- `eval/traj_diversity` — fraction of distinct trajectories across eval games. Near 0 means self-play has collapsed into a single line of play.
+- `selfplay/learner_winrate` — should hover near 0.5 once the pool holds recent snapshots; ~0 or ~1 per seat is a red flag.
+- `selfplay/terminal_reward_mean` — should sit strictly between −1 and 1 (both wins and losses are being experienced).
+
+Analyze runs for convergence/collapse after (or during) training:
+
+```
+uv run python -m santorini.analyze_training run models/tb
+```
+
 ## 🤖 PettingZoo Environment
 
 The Santorini Env is set up for multi-agent reinforcement learning via custom PettingZoo environment and Stable Baseline 3.
